@@ -6,6 +6,9 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.io.File;
+import java.nio.file.Paths;
+
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
     
@@ -30,9 +33,14 @@ public class WebConfig implements WebMvcConfigurer {
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 确保路径以文件分隔符结尾，并且适用于不同操作系统
-        String normalizedUploadPath = uploadPath.endsWith(File.separator) ? uploadPath : uploadPath + File.separator;
+        // 使用绝对路径，确保在各种环境下都能正确映射
+        String absoluteUploadPath = Paths.get(uploadPath).toAbsolutePath().toString();
+        // 确保路径以文件分隔符结尾
+        if (!absoluteUploadPath.endsWith(File.separator)) {
+            absoluteUploadPath += File.separator;
+        }
+        
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + normalizedUploadPath);
+                .addResourceLocations("file:" + absoluteUploadPath);
     }
 }

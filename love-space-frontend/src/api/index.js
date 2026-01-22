@@ -50,6 +50,17 @@ const api = {
     changePassword: (oldPassword, newPassword) => http.post('/auth/change-password', { oldPassword, newPassword })
   },
   
+    // 用户相关
+  user: {
+    uploadAvatar: (file) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      return http.post('/users/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    }
+  },
+  
   // 仪表盘
   dashboard: {
     getData: () => http.get('/dashboard')

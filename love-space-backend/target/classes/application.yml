@@ -1,0 +1,60 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: love-space
+  
+  # 数据库配置
+  datasource:
+    url: jdbc:mysql://localhost:3306/love_space?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: love
+    password: Lml@200234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+# MyBatis Plus 配置
+mybatis-plus:
+  mapper-locations: classpath:/mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT 配置
+jwt:
+  secret: LoveSpaceLiMengLongZengFanRui2026SecretKey123456789
+  expiration: 604800000  # 7天
+
+# 文件上传路径
+upload:
+  path: ./uploads
+  url-prefix: /uploads
+
+# 情侣信息配置
+couple:
+  start-date: 2026-01-21
+  user1:
+    username: limenglong
+    nickname: 李梦龙
+  user2:
+    username: zengfanrui
+    nickname: 曾凡芮
+
+# 日志配置
+logging:
+  level:
+    com.lovespace: debug
+  file:
+    path: ./logs

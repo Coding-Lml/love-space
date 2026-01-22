@@ -134,10 +134,15 @@ const onFileChange = async (e) => {
   if (!file) return
   
   try {
-    const res = await api.file.upload(file)
+    const res = await api.user.uploadAvatar(file)
     if (res.code === 200) {
-      await userStore.updateProfile({ avatar: res.data })
+      // 更新 store 中的用户信息
+      userStore.user.avatar = res.data
+      // 更新本地存储
+      localStorage.setItem('user', JSON.stringify(userStore.user))
       showToast({ message: '头像更新成功', icon: 'success' })
+    } else {
+      showToast(res.message || '上传失败')
     }
   } catch (e) {
     showToast('上传失败')
