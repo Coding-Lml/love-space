@@ -92,8 +92,6 @@
 - 表：`user`
   - 字段：id, username, password(BCrypt), nickname, avatar, created_at, updated_at
   - 初始账号（由 schema.sql 初始化）：
-    - 用户名：`limenglong` / `zengfanrui`
-    - 默认密码：`love520`（BCrypt 存储）
 
 - 主要接口
   - `POST /api/auth/login`：登录，返回 token + 用户信息
