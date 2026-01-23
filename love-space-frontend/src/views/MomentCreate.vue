@@ -37,6 +37,8 @@
           multiple
           :max-count="9"
           :max-size="100 * 1024 * 1024"
+          accept="image/*,video/*"
+          :before-read="beforeRead"
           :after-read="afterRead"
           @oversize="onOversize"
         >
@@ -75,6 +77,39 @@ const form = ref({
 const fileList = ref([])
 const submitting = ref(false)
 
+const beforeRead = (file) => {
+  const files = Array.isArray(file) ? file : [file]
+
+  const allowedImageTypes = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp'
+  ])
+  const allowedVideoTypes = new Set([
+    'video/mp4',
+    'video/quicktime',
+    'video/webm',
+    'video/x-msvideo'
+  ])
+
+  const invalid = files.find((item) => {
+    const raw = item?.file || item
+    const type = raw?.type
+    if (!type) return true
+    if (type.startsWith('image/')) return !allowedImageTypes.has(type)
+    if (type.startsWith('video/')) return !allowedVideoTypes.has(type)
+    return true
+  })
+
+  if (invalid) {
+    showToast('仅支持 jpg/png/gif/webp 图片与 mp4/mov/webm/avi 视频')
+    return false
+  }
+
+  return true
+}
+
 // 文件读取后
 const afterRead = (file) => {
   if (Array.isArray(file)) {
@@ -92,7 +127,7 @@ const onOversize = () => {
 // 提交
 const submit = async () => {
   if (!form.value.content && fileList.value.length === 0) {
-    showToast('请输入内容或上传图片')
+    showToast('请输入内容或上传图片/视频')
     return
   }
   
