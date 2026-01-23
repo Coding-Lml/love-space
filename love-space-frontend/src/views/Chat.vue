@@ -31,8 +31,9 @@
                 <van-icon name="volume-o" size="18" />
                 <span class="audio-text">语音</span>
                 <span v-if="msg.extraObj && msg.extraObj.duration" class="audio-duration">
-                  {{ msg.extraObj.duration }}"
+                  {{ msg.extraObj.duration }}s
                 </span>
+              </div>
             </template>
             <template v-else>
               <span>[{{ msg.type }}]</span>
