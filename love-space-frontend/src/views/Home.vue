@@ -2,8 +2,8 @@
   <div class="home-page">
     <van-nav-bar title="Love Space" left-text="" right-text="">
       <template #right>
-        <van-icon name="chat-o" size="20" color="#fff" style="margin-right: 12px" @click="goChat" />
-        <van-icon name="setting-o" size="20" color="#fff" @click="goProfile" />
+        <van-icon name="chat-o" size="20" color="#ff6b81" style="margin-right: 16px" @click="goChat" />
+        <van-icon name="setting-o" size="20" color="#ff6b81" @click="goProfile" />
       </template>
     </van-nav-bar>
     

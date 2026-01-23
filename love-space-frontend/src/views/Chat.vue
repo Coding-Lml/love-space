@@ -72,7 +72,13 @@
         >
           <van-icon name="photo-o" size="22" />
         </van-uploader>
-        <div class="voice-toggle" @click="toggleRecord">
+        <div
+          class="voice-toggle"
+          @touchstart.prevent="startRecord"
+          @touchend.prevent="stopRecord"
+          @mousedown.prevent="startRecord"
+          @mouseup.prevent="stopRecord"
+        >
           <van-icon :name="recording ? 'pause-circle-o' : 'volume-o'" size="22" />
         </div>
         <van-button type="primary" size="small" round @click="sendText">
@@ -90,7 +96,7 @@
         </span>
       </div>
       <div v-if="recording" class="recording-hint">
-        正在录音，再点一次发送
+        正在录音，松开后发送
       </div>
     </div>
   </div>
@@ -192,33 +198,23 @@ const playAudio = url => {
   audio.play()
 }
 
-const toggleRecord = async () => {
-  if (recording.value) {
-    if (mediaRecorder.value) {
-      mediaRecorder.value.stop()
-    }
-    recording.value = false
-    return
-  }
-
+const startRecord = async () => {
+  if (recording.value) return
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showToast('当前浏览器不支持语音录制')
     return
   }
-
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     audioStream.value = stream
     recordedChunks.value = []
     const mr = new MediaRecorder(stream)
     mediaRecorder.value = mr
-
     mr.ondataavailable = e => {
       if (e.data && e.data.size > 0) {
         recordedChunks.value.push(e.data)
       }
     }
-
     mr.onstop = async () => {
       if (audioStream.value) {
         audioStream.value.getTracks().forEach(t => t.stop())
@@ -240,12 +236,19 @@ const toggleRecord = async () => {
         showToast('语音上传失败')
       }
     }
-
     recordingStart.value = Date.now()
     recording.value = true
     mr.start()
   } catch (e) {
     showToast('无法获取麦克风权限')
+  }
+}
+
+const stopRecord = () => {
+  if (!recording.value) return
+  recording.value = false
+  if (mediaRecorder.value) {
+    mediaRecorder.value.stop()
   }
 }
 
