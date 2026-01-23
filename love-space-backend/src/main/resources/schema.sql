@@ -93,6 +93,21 @@ CREATE TABLE IF NOT EXISTS `anniversary` (
     INDEX `idx_date` (`date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='纪念日表';
 
+-- 聊天消息表（双人私聊）
+CREATE TABLE IF NOT EXISTS `chat_message` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '消息ID',
+    `from_user_id` BIGINT NOT NULL COMMENT '发送方用户ID',
+    `to_user_id` BIGINT NOT NULL COMMENT '接收方用户ID',
+    `type` VARCHAR(20) NOT NULL COMMENT '消息类型: text/image/audio/sticker',
+    `content` TEXT DEFAULT NULL COMMENT '文本内容或补充说明',
+    `media_url` VARCHAR(255) DEFAULT NULL COMMENT '媒体文件URL（图片/语音等）',
+    `extra` JSON DEFAULT NULL COMMENT '扩展字段，如 {"duration":12}',
+    `status` VARCHAR(20) NOT NULL DEFAULT 'sent' COMMENT '状态: sent/read',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+    INDEX `idx_user_pair_time` (`from_user_id`, `to_user_id`, `created_at`),
+    INDEX `idx_to_user_time` (`to_user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天消息表';
+
 -- ==========================================
 -- 初始化数据
 -- ==========================================

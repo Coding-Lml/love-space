@@ -1,8 +1,8 @@
 <template>
   <div class="home-page">
-    <!-- 顶部栏 -->
     <van-nav-bar title="Love Space" left-text="" right-text="">
       <template #right>
+        <van-icon name="chat-o" size="20" color="#fff" style="margin-right: 12px" @click="goChat" />
         <van-icon name="setting-o" size="20" color="#fff" @click="goProfile" />
       </template>
     </van-nav-bar>
@@ -131,6 +131,7 @@ const formatTime = (time) => {
 
 // 跳转
 const goProfile = () => router.push({ name: 'profile' })
+const goChat = () => router.push({ name: 'chat' })
 const goMoments = () => router.push({ name: 'moments' })
 
 onMounted(() => {

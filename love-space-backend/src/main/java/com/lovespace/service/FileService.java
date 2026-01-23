@@ -26,10 +26,17 @@ public class FileService {
     @Value("${upload.url-prefix}")
     private String urlPrefix;
     
-    // 允许的图片类型
     private static final List<String> IMAGE_TYPES = List.of("image/jpeg", "image/png", "image/gif", "image/webp");
-    // 允许的视频类型
     private static final List<String> VIDEO_TYPES = List.of("video/mp4", "video/quicktime", "video/x-msvideo", "video/webm");
+    private static final List<String> AUDIO_TYPES = List.of(
+            "audio/mpeg",
+            "audio/mp3",
+            "audio/aac",
+            "audio/ogg",
+            "audio/webm",
+            "audio/wav",
+            "audio/x-m4a"
+    );
     
     /**
      * 上传单个文件
@@ -46,6 +53,8 @@ public class FileService {
             subDir = "images";
         } else if (VIDEO_TYPES.contains(contentType)) {
             subDir = "videos";
+        } else if (AUDIO_TYPES.contains(contentType)) {
+            subDir = "audios";
         } else {
             return Result.error("不支持的文件类型");
         }
@@ -169,6 +178,8 @@ public class FileService {
             return "image";
         } else if (VIDEO_TYPES.contains(contentType)) {
             return "video";
+        } else if (AUDIO_TYPES.contains(contentType)) {
+            return "audio";
         }
         return "unknown";
     }
