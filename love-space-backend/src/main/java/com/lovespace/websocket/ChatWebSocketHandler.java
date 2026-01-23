@@ -16,6 +16,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
@@ -129,6 +130,11 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
         if (token == null || token.isBlank()) {
             return null;
+        }
+
+        try {
+            token = java.net.URLDecoder.decode(token, StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
         }
 
         if (!jwtUtil.validateToken(token)) {
