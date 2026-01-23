@@ -27,6 +27,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     // 不需要认证的路径
     private static final List<String> WHITE_LIST = Arrays.asList(
             "/api/auth/login",
+            "/api/health",
             "/uploads/**",
             "/favicon.ico",
             "/error"

@@ -20,6 +20,7 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
     private final CommentMapper commentMapper;
     private final MomentLikeMapper likeMapper;
     private final UserMapper userMapper;
+    private final FileService fileService;
     
     /**
      * 发布动态
@@ -89,7 +90,21 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         if (!moment.getUserId().equals(userId)) {
             return Result.error("只能删除自己的动态");
         }
-        
+
+        List<MomentMedia> mediaList = mediaMapper.selectList(new LambdaQueryWrapper<MomentMedia>()
+                .eq(MomentMedia::getMomentId, momentId));
+        for (MomentMedia media : mediaList) {
+            if (media.getUrl() != null && !media.getUrl().isBlank()) {
+                fileService.deleteFile(media.getUrl());
+            }
+            if (media.getThumbnail() != null && !media.getThumbnail().isBlank()) {
+                fileService.deleteFile(media.getThumbnail());
+            }
+        }
+
+        mediaMapper.delete(new LambdaQueryWrapper<MomentMedia>().eq(MomentMedia::getMomentId, momentId));
+        likeMapper.delete(new LambdaQueryWrapper<MomentLike>().eq(MomentLike::getMomentId, momentId));
+        commentMapper.delete(new LambdaQueryWrapper<Comment>().eq(Comment::getMomentId, momentId));
         this.removeById(momentId);
         return Result.success("删除成功", null);
     }

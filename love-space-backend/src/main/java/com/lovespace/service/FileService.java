@@ -8,6 +8,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -122,14 +124,33 @@ public class FileService {
         if (url == null || !url.startsWith(urlPrefix)) {
             return Result.error("无效的文件URL");
         }
-        
+
         String relativePath = url.substring(urlPrefix.length());
-        // 使用系统文件分隔符处理路径
-        String normalizedRelativePath = relativePath.replace("/", File.separator);
-        String filePath = uploadPath + normalizedRelativePath;
-        
-        File file = new File(filePath);
+        int queryIndex = relativePath.indexOf('?');
+        if (queryIndex >= 0) {
+            relativePath = relativePath.substring(0, queryIndex);
+        }
+        int fragmentIndex = relativePath.indexOf('#');
+        if (fragmentIndex >= 0) {
+            relativePath = relativePath.substring(0, fragmentIndex);
+        }
+
+        while (relativePath.startsWith("/")) {
+            relativePath = relativePath.substring(1);
+        }
+
+        Path baseDir = Paths.get(uploadPath).toAbsolutePath().normalize();
+        Path targetPath = baseDir.resolve(relativePath.replace("/", File.separator)).normalize();
+
+        if (!targetPath.startsWith(baseDir)) {
+            return Result.error("无效的文件URL");
+        }
+
+        File file = targetPath.toFile();
         if (file.exists()) {
+            if (file.isDirectory()) {
+                return Result.error("无效的文件URL");
+            }
             if (file.delete()) {
                 return Result.success("删除成功", null);
             } else {

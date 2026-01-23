@@ -7,9 +7,9 @@ spring:
   
   # 数据库配置
   datasource:
-    url: jdbc:mysql://localhost:3306/love_space?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: love
-    password: Lml@200234
+    url: ${DB_URL:jdbc:mysql://localhost:3306/love_space?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:love}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   
   # 文件上传配置
@@ -34,13 +34,31 @@ mybatis-plus:
 
 # JWT 配置
 jwt:
-  secret: LoveSpaceLiMengLongZengFanRui2026SecretKey123456789
+  secret: ${JWT_SECRET:}
   expiration: 604800000  # 7天
 
 # 文件上传路径
 upload:
-  path: ./uploads
+  path: ${UPLOAD_PATH:/data/love-space/uploads}
   url-prefix: /uploads
+
+# 跨域配置（同域部署可在 prod 中关闭）
+cors:
+  allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*}
+  allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
+  allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+  allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+  max-age: ${CORS_MAX_AGE:3600}
+
+# 错误返回是否携带内部细节（生产环境建议关闭）
+app:
+  error:
+    show-details: ${APP_ERROR_SHOW_DETAILS:true}
+
+security:
+  login-rate-limit:
+    max-attempts: ${LOGIN_RATE_LIMIT_MAX_ATTEMPTS:10}
+    window-seconds: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:300}
 
 # 情侣信息配置
 couple:
@@ -57,4 +75,4 @@ logging:
   level:
     com.lovespace: debug
   file:
-    path: ./logs
+    path: ${LOG_PATH:/data/love-space/logs}

@@ -2,6 +2,7 @@ package com.lovespace.config;
 
 import com.lovespace.common.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -11,6 +12,9 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @Value("${app.error.show-details:true}")
+    private boolean showErrorDetails;
     
     /**
      * 参数校验异常
@@ -48,6 +52,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常", e);
-        return Result.error("系统错误：" + e.getMessage());
+        if (showErrorDetails) {
+            return Result.error("系统错误：" + e.getMessage());
+        }
+        return Result.error("系统错误，请稍后重试");
     }
 }

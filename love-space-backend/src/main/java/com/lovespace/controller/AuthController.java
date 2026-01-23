@@ -4,8 +4,10 @@ import com.lovespace.common.Result;
 import com.lovespace.dto.LoginRequest;
 import com.lovespace.dto.LoginResponse;
 import com.lovespace.entity.User;
+import com.lovespace.security.LoginRateLimiter;
 import com.lovespace.service.UserService;
 import com.lovespace.util.UserContext;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -18,12 +20,19 @@ import java.util.Map;
 public class AuthController {
     
     private final UserService userService;
+    private final LoginRateLimiter loginRateLimiter;
     
     /**
      * 登录
      */
     @PostMapping("/login")
-    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public Result<LoginResponse> login(HttpServletRequest httpServletRequest, @Valid @RequestBody LoginRequest request) {
+        String clientIp = getClientIp(httpServletRequest);
+        String username = request.getUsername() == null ? "" : request.getUsername().trim();
+        String key = clientIp + ":" + username;
+        if (!loginRateLimiter.tryAcquire(key)) {
+            return Result.error(429, "登录过于频繁，请稍后再试");
+        }
         return userService.login(request);
     }
     
@@ -63,5 +72,14 @@ public class AuthController {
         String oldPassword = params.get("oldPassword");
         String newPassword = params.get("newPassword");
         return userService.changePassword(userId, oldPassword, newPassword);
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            int commaIndex = xff.indexOf(',');
+            return (commaIndex > 0 ? xff.substring(0, commaIndex) : xff).trim();
+        }
+        return request.getRemoteAddr();
     }
 }

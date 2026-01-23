@@ -6,10 +6,9 @@
       </keep-alive>
     </router-view>
     
-    <!-- 底部导航栏 -->
-    <van-tabbar 
-      v-if="showTabbar" 
-      v-model="activeTab" 
+    <van-tabbar
+      v-if="showTabbar"
+      v-model="activeTab"
       active-color="#ff6b81"
       inactive-color="#999"
       @change="onTabChange"
@@ -18,6 +17,7 @@
       <van-tabbar-item name="moments" icon="photo-o">动态</van-tabbar-item>
       <van-tabbar-item name="diary" icon="edit">日记</van-tabbar-item>
       <van-tabbar-item name="anniversary" icon="calendar-o">纪念日</van-tabbar-item>
+      <van-tabbar-item name="profile" icon="user-o">我的</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
@@ -31,8 +31,7 @@ const router = useRouter()
 
 const activeTab = ref('home')
 
-// 需要显示 tabbar 的页面
-const tabbarPages = ['home', 'moments', 'diary', 'anniversary']
+const tabbarPages = ['home', 'moments', 'diary', 'anniversary', 'profile']
 const showTabbar = computed(() => tabbarPages.includes(route.name))
 
 // 监听路由变化，同步 tabbar 状态

@@ -8,7 +8,7 @@ import {
   Button, NavBar, Tabbar, TabbarItem, Icon, Image as VanImage,
   Form, Field, CellGroup, Cell, Toast, Dialog, ActionSheet,
   Uploader, List, PullRefresh, Empty, Loading, Popup, Picker,
-  Calendar, DatePicker, TextArea, Tag, Divider, Grid, GridItem,
+  Calendar, DatePicker, Tag, Divider, Grid, GridItem,
   FloatingBubble, Swipe, SwipeItem, ImagePreview, Tab, Tabs
 } from 'vant'
 import 'vant/lib/index.css'
@@ -23,7 +23,7 @@ const vantComponents = [
   Button, NavBar, Tabbar, TabbarItem, Icon, VanImage,
   Form, Field, CellGroup, Cell, Toast, Dialog, ActionSheet,
   Uploader, List, PullRefresh, Empty, Loading, Popup, Picker,
-  Calendar, DatePicker, TextArea, Tag, Divider, Grid, GridItem,
+  Calendar, DatePicker, Tag, Divider, Grid, GridItem,
   FloatingBubble, Swipe, SwipeItem, ImagePreview, Tab, Tabs
 ]
 vantComponents.forEach(component => {

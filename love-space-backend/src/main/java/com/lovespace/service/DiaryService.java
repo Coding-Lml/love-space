@@ -59,14 +59,18 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
      */
     public Result<Page<Diary>> getList(Long userId, Integer pageNum, Integer pageSize) {
         Page<Diary> page = new Page<>(pageNum, pageSize);
-        
-        // 查询自己的日记 + 对方可见的日记
-        Page<Diary> diaryPage = this.page(page, new LambdaQueryWrapper<Diary>()
-                .and(wrapper -> wrapper
-                        .eq(Diary::getUserId, userId)
-                        .or()
-                        .eq(Diary::getVisibility, "both"))
-                .orderByDesc(Diary::getDiaryDate));
+
+        Long partnerId = getPartnerId(userId);
+        LambdaQueryWrapper<Diary> wrapper = new LambdaQueryWrapper<Diary>()
+                .and(w -> {
+                    w.eq(Diary::getUserId, userId);
+                    if (partnerId != null) {
+                        w.or().eq(Diary::getUserId, partnerId).eq(Diary::getVisibility, "both");
+                    }
+                })
+                .orderByDesc(Diary::getDiaryDate);
+
+        Page<Diary> diaryPage = this.page(page, wrapper);
         
         // 填充用户信息
         for (Diary diary : diaryPage.getRecords()) {
@@ -83,12 +87,15 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
         YearMonth yearMonth = YearMonth.of(year, month);
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
-        
+
+        Long partnerId = getPartnerId(userId);
         List<Diary> diaries = this.list(new LambdaQueryWrapper<Diary>()
-                .and(wrapper -> wrapper
-                        .eq(Diary::getUserId, userId)
-                        .or()
-                        .eq(Diary::getVisibility, "both"))
+                .and(w -> {
+                    w.eq(Diary::getUserId, userId);
+                    if (partnerId != null) {
+                        w.or().eq(Diary::getUserId, partnerId).eq(Diary::getVisibility, "both");
+                    }
+                })
                 .between(Diary::getDiaryDate, startDate, endDate)
                 .orderByAsc(Diary::getDiaryDate));
         
@@ -104,11 +111,18 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
      */
     public Result<Diary> getByDate(Long userId, LocalDate date) {
         Diary diary = this.getOne(new LambdaQueryWrapper<Diary>()
-                .and(wrapper -> wrapper
-                        .eq(Diary::getUserId, userId)
-                        .or()
-                        .eq(Diary::getVisibility, "both"))
+                .eq(Diary::getUserId, userId)
                 .eq(Diary::getDiaryDate, date));
+
+        if (diary == null) {
+            Long partnerId = getPartnerId(userId);
+            if (partnerId != null) {
+                diary = this.getOne(new LambdaQueryWrapper<Diary>()
+                        .eq(Diary::getUserId, partnerId)
+                        .eq(Diary::getDiaryDate, date)
+                        .eq(Diary::getVisibility, "both"));
+            }
+        }
         
         if (diary != null) {
             fillDiaryUser(diary);
@@ -124,10 +138,14 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
         if (diary == null) {
             return Result.error("日记不存在");
         }
-        
-        // 检查权限
-        if (!diary.getUserId().equals(userId) && "self".equals(diary.getVisibility())) {
-            return Result.error("无权查看此日记");
+
+        if (!diary.getUserId().equals(userId)) {
+            Long partnerId = getPartnerId(userId);
+            if (partnerId == null
+                    || !diary.getUserId().equals(partnerId)
+                    || !"both".equals(diary.getVisibility())) {
+                return Result.error("无权查看此日记");
+            }
         }
         
         fillDiaryUser(diary);
@@ -159,5 +177,12 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
             user.setPassword(null);
         }
         diary.setUser(user);
+    }
+
+    private Long getPartnerId(Long userId) {
+        User partner = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .ne(User::getId, userId)
+                .last("LIMIT 1"));
+        return partner == null ? null : partner.getId();
     }
 }

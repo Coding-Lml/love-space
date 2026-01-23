@@ -1,0 +1,14 @@
+[Unit]
+Description=Love Space Backend
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/data/love-space/backend
+EnvironmentFile=/data/love-space/.env
+ExecStart=/usr/bin/java -jar /data/love-space/backend/target/love-space-backend-1.0.0.jar --spring.profiles.active=prod
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
