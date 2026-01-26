@@ -3,9 +3,6 @@ import { ref } from 'vue'
 import api from '../api'
 
 export const useChatStore = defineStore('chat', () => {
-  const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
-  const currentUserId = currentUser && currentUser.id ? currentUser.id : null
-
   const connected = ref(false)
   const connecting = ref(false)
   const ws = ref(null)
@@ -14,6 +11,15 @@ export const useChatStore = defineStore('chat', () => {
   const hasMore = ref(true)
   const active = ref(false)
   const unreadCount = ref(0)
+
+  const getCurrentUserId = () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
+      return currentUser && currentUser.id ? currentUser.id : null
+    } catch (e) {
+      return null
+    }
+  }
 
   const connect = () => {
     if (connected.value || connecting.value) return
@@ -61,6 +67,7 @@ export const useChatStore = defineStore('chat', () => {
     if (exists) return
     messages.value.push(msg)
     messages.value.sort((a, b) => a.id - b.id)
+    const currentUserId = getCurrentUserId()
     if (currentUserId && msg.toUserId === currentUserId && !active.value) {
       unreadCount.value += 1
     }
