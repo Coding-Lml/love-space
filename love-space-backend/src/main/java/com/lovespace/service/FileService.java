@@ -2,6 +2,7 @@ package com.lovespace.service;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
+import com.aliyun.oss.model.ObjectMetadata;
 import com.lovespace.common.Result;
 import com.lovespace.config.OssProperties;
 import lombok.extern.slf4j.Slf4j;
@@ -360,8 +361,18 @@ public class FileService {
         keyBuilder.append(subDir).append("/").append(dateDir).append("/").append(newFilename);
         String objectKey = keyBuilder.toString();
         OSS client = new OSSClientBuilder().build(ossProperties.getEndpoint(), ossProperties.getAccessKeyId(), ossProperties.getAccessKeySecret());
+        ObjectMetadata metadata = new ObjectMetadata();
+        String contentType = file.getContentType();
+        if (contentType != null && !contentType.isBlank()) {
+            metadata.setContentType(contentType);
+        }
+        metadata.setContentDisposition("inline");
+        if (file.getSize() > 0) {
+            metadata.setContentLength(file.getSize());
+        }
+        metadata.setCacheControl("public, max-age=31536000, immutable");
         try (InputStream in = file.getInputStream()) {
-            client.putObject(ossProperties.getBucket(), objectKey, in);
+            client.putObject(ossProperties.getBucket(), objectKey, in, metadata);
         } finally {
             client.shutdown();
         }
