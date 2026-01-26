@@ -296,6 +296,23 @@ public class FileService {
         }
         return "unknown";
     }
+
+    public String buildThumbnailUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return url;
+        }
+        if (url.contains("x-oss-process=")) {
+            return url;
+        }
+        String hash = "";
+        int hashIndex = url.indexOf('#');
+        if (hashIndex >= 0) {
+            hash = url.substring(hashIndex);
+            url = url.substring(0, hashIndex);
+        }
+        String joiner = url.contains("?") ? "&" : "?";
+        return url + joiner + "x-oss-process=image/resize,w_480/quality,q_80" + hash;
+    }
     
     private boolean isOssEnabled() {
         if (ossProperties == null) {

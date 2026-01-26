@@ -24,7 +24,7 @@
               <span>{{ msg.content }}</span>
             </template>
             <template v-else-if="msg.type === 'image'">
-              <img :src="msg.mediaUrl" class="msg-image" loading="lazy" decoding="async" @click="previewImage(msg.mediaUrl)" />
+              <img :src="toThumbUrl(msg.mediaUrl)" class="msg-image" loading="lazy" decoding="async" @click="previewImage(msg.mediaUrl)" />
             </template>
             <template v-else-if="msg.type === 'audio'">
               <div class="audio-bubble" @click="playAudio(msg.mediaUrl)">
@@ -109,6 +109,7 @@ import { showImagePreview, showToast } from 'vant'
 import { useUserStore } from '../stores/user'
 import { useChatStore } from '../stores/chat'
 import api from '../api'
+import { toThumbUrl } from '../utils/media'
 
 const router = useRouter()
 const userStore = useUserStore()

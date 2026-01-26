@@ -44,9 +44,9 @@
               v-for="(media, index) in moment.mediaList" 
               :key="media.id" 
               class="media-item"
-              @click="previewImage(moment.mediaList, index)"
+              @click="onMediaClick(moment.mediaList, index)"
             >
-              <img v-if="media.type === 'image'" :src="media.url" loading="lazy" decoding="async" />
+              <img v-if="media.type === 'image'" :src="media.thumbnail || toThumbUrl(media.url)" loading="lazy" decoding="async" />
               <video v-else :src="media.url" preload="metadata" playsinline />
             </div>
           </div>
@@ -121,6 +121,7 @@ import { showToast, showConfirmDialog, showImagePreview } from 'vant'
 import { useUserStore } from '../stores/user'
 import api from '../api'
 import dayjs from 'dayjs'
+import { toThumbUrl } from '../utils/media'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -240,10 +241,12 @@ const submitComment = async () => {
   }
 }
 
-// 图片预览
-const previewImage = (mediaList, index) => {
+const onMediaClick = (mediaList, index) => {
+  const target = Array.isArray(mediaList) ? mediaList[index] : null
+  if (!target || target.type !== 'image') return
   const images = mediaList.filter(m => m.type === 'image').map(m => m.url)
-  showImagePreview({ images, startPosition: index })
+  const startPosition = mediaList.slice(0, index).filter(m => m.type === 'image').length
+  showImagePreview({ images, startPosition })
 }
 
 // 发布

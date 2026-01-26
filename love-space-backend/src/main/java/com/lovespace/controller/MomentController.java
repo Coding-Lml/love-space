@@ -43,8 +43,13 @@ public class MomentController {
                     Result<String> uploadResult = fileService.uploadFile(file);
                     if (uploadResult.getCode() == 200) {
                         MomentMedia media = new MomentMedia();
-                        media.setUrl(uploadResult.getData());
-                        media.setType(fileService.getFileType(file.getContentType()));
+                        String url = uploadResult.getData();
+                        String type = fileService.getFileType(file.getContentType());
+                        media.setUrl(url);
+                        media.setType(type);
+                        if ("image".equals(type)) {
+                            media.setThumbnail(fileService.buildThumbnailUrl(url));
+                        }
                         mediaList.add(media);
                     }
                 }
