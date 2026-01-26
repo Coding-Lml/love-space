@@ -5,7 +5,7 @@
     <!-- 用户信息卡片 -->
     <div class="profile-card card">
       <div class="avatar-section" @click="showAvatarAction = true">
-        <img :src="userStore.user?.avatar || '/default-avatar.png'" class="avatar avatar-large" />
+        <img :src="userStore.user?.avatar || '/default-avatar.png'" class="avatar avatar-large" loading="lazy" decoding="async" />
         <div class="edit-hint">点击更换头像</div>
       </div>
       <div class="user-info">
@@ -21,7 +21,7 @@
         <span>我的另一半</span>
       </div>
       <div class="partner-info">
-        <img :src="userStore.partner?.avatar || '/default-avatar.png'" class="avatar" />
+        <img :src="userStore.partner?.avatar || '/default-avatar.png'" class="avatar" loading="lazy" decoding="async" />
         <div class="partner-name">{{ userStore.partner?.nickname }}</div>
       </div>
     </div>

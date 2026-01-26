@@ -12,9 +12,9 @@
     <!-- 恋爱计时器 -->
     <div class="love-timer card">
       <div class="couple-avatars">
-        <img :src="userStore.user?.avatar || '/default-avatar.png'" class="avatar avatar-large" />
+        <img :src="userStore.user?.avatar || '/default-avatar.png'" class="avatar avatar-large" fetchpriority="high" decoding="async" />
         <span class="heart-icon heartbeat">❤️</span>
-        <img :src="userStore.partner?.avatar || '/default-avatar.png'" class="avatar avatar-large" />
+        <img :src="userStore.partner?.avatar || '/default-avatar.png'" class="avatar avatar-large" fetchpriority="high" decoding="async" />
       </div>
       <div class="couple-names">
         <span>{{ userStore.user?.nickname }}</span>
@@ -67,7 +67,7 @@
           :key="moment.id" 
           class="moment-item"
         >
-          <img :src="moment.user?.avatar" class="avatar" />
+          <img :src="moment.user?.avatar" class="avatar" loading="lazy" decoding="async" />
           <div class="moment-content">
             <div class="moment-text">{{ moment.content?.substring(0, 50) }}{{ moment.content?.length > 50 ? '...' : '' }}</div>
             <div class="moment-time">{{ formatTime(moment.createdAt) }}</div>

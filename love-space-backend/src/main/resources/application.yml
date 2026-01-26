@@ -42,6 +42,15 @@ upload:
   path: ${UPLOAD_PATH:/data/love-space/uploads}
   url-prefix: /uploads
 
+oss:
+  enabled: false
+  endpoint:
+  access-key-id: ${OSS_ACCESS_KEY_ID:}
+  access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+  bucket:
+  domain:
+  base-path: love-space
+
 # 跨域配置（同域部署可在 prod 中关闭）
 cors:
   allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*}

@@ -24,7 +24,7 @@
               <span>{{ msg.content }}</span>
             </template>
             <template v-else-if="msg.type === 'image'">
-              <img :src="msg.mediaUrl" class="msg-image" @click="previewImage(msg.mediaUrl)" />
+              <img :src="msg.mediaUrl" class="msg-image" loading="lazy" decoding="async" @click="previewImage(msg.mediaUrl)" />
             </template>
             <template v-else-if="msg.type === 'audio'">
               <div class="audio-bubble" @click="playAudio(msg.mediaUrl)">

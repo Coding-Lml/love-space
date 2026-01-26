@@ -14,7 +14,7 @@
         <div v-for="moment in moments" :key="moment.id" class="moment-card card">
           <!-- 用户信息 -->
           <div class="moment-header">
-            <img :src="moment.user?.avatar" class="avatar" />
+            <img :src="moment.user?.avatar" class="avatar" loading="lazy" decoding="async" />
             <div class="user-info">
               <div class="nickname">{{ moment.user?.nickname }}</div>
               <div class="time-text">{{ formatTime(moment.createdAt) }}</div>
@@ -46,8 +46,8 @@
               class="media-item"
               @click="previewImage(moment.mediaList, index)"
             >
-              <img v-if="media.type === 'image'" :src="media.url" />
-              <video v-else :src="media.url" />
+              <img v-if="media.type === 'image'" :src="media.url" loading="lazy" decoding="async" />
+              <video v-else :src="media.url" preload="metadata" playsinline />
             </div>
           </div>
           
