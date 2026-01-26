@@ -11,6 +11,14 @@ export const useChatStore = defineStore('chat', () => {
   const hasMore = ref(true)
   const active = ref(false)
   const unreadCount = ref(0)
+  const reconnecting = ref(false)
+  const reconnectInMs = ref(0)
+  const lastDisconnectAt = ref(null)
+
+  let reconnectTimer = null
+  let reconnectAttempts = 0
+  let manualClose = false
+  let listenersBound = false
 
   const getCurrentUserId = () => {
     try {
@@ -21,12 +29,60 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  const clearReconnectTimer = () => {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+  }
+
+  const scheduleReconnect = () => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    if (connected.value || connecting.value) return
+    if (reconnectTimer) return
+
+    reconnectAttempts += 1
+    const base = Math.min(30000, 1000 * Math.pow(2, Math.min(reconnectAttempts, 5)))
+    const jitter = Math.floor(Math.random() * 400)
+    const delay = base + jitter
+
+    reconnecting.value = true
+    reconnectInMs.value = delay
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      reconnectInMs.value = 0
+      connect()
+    }, delay)
+  }
+
+  const bindGlobalListeners = () => {
+    if (listenersBound) return
+    listenersBound = true
+    window.addEventListener('online', () => {
+      if (!connected.value) {
+        clearReconnectTimer()
+        connect()
+      }
+    })
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && !connected.value) {
+        clearReconnectTimer()
+        connect()
+      }
+    })
+  }
+
   const connect = () => {
     if (connected.value || connecting.value) return
 
     const token = localStorage.getItem('token')
     if (!token) return
 
+    bindGlobalListeners()
+    clearReconnectTimer()
+    manualClose = false
+    reconnecting.value = false
     connecting.value = true
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -37,6 +93,8 @@ export const useChatStore = defineStore('chat', () => {
       ws.value = socket
       connected.value = true
       connecting.value = false
+      reconnecting.value = false
+      reconnectAttempts = 0
     }
 
     socket.onmessage = event => {
@@ -55,6 +113,13 @@ export const useChatStore = defineStore('chat', () => {
       connected.value = false
       connecting.value = false
       ws.value = null
+      lastDisconnectAt.value = Date.now()
+      if (!manualClose) {
+        scheduleReconnect()
+      } else {
+        reconnecting.value = false
+        reconnectInMs.value = 0
+      }
     }
 
     socket.onerror = () => {
@@ -129,6 +194,8 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   const reset = () => {
+    manualClose = true
+    clearReconnectTimer()
     if (ws.value) {
       try {
         ws.value.close()
@@ -138,11 +205,15 @@ export const useChatStore = defineStore('chat', () => {
     ws.value = null
     connected.value = false
     connecting.value = false
+    reconnecting.value = false
+    reconnectInMs.value = 0
+    reconnectAttempts = 0
     messages.value = []
     loadingHistory.value = false
     hasMore.value = true
     active.value = false
     unreadCount.value = 0
+    lastDisconnectAt.value = null
   }
 
   const setActive = flag => {
@@ -154,6 +225,10 @@ export const useChatStore = defineStore('chat', () => {
 
   return {
     connected,
+    connecting,
+    reconnecting,
+    reconnectInMs,
+    lastDisconnectAt,
     messages,
     loadingHistory,
     hasMore,

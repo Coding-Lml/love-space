@@ -11,7 +11,7 @@
         finished-text="没有更多了"
         @load="loadMore"
       >
-        <div v-for="moment in moments" :key="moment.id" class="moment-card card">
+        <div v-for="moment in moments" :key="moment.id" v-memo="[moment.id, moment.likes, moment.liked, moment.comments?.length]" class="moment-card card">
           <!-- 用户信息 -->
           <div class="moment-header">
             <img :src="moment.user?.avatar" class="avatar" loading="lazy" decoding="async" />

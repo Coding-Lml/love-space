@@ -7,6 +7,9 @@
     />
 
     <div class="chat-body">
+      <div v-if="!chatStore.connected" class="ws-hint" @click="chatStore.connect">
+        {{ chatStore.connecting ? '连接中...' : (chatStore.reconnecting ? `网络断开，${Math.ceil(chatStore.reconnectInMs / 1000)}s 后重连（点此立即重连）` : '连接已断开，点此重连') }}
+      </div>
       <div class="history-hint" v-if="chatStore.hasMore">
         <van-button size="small" type="primary" plain @click="loadMore" :loading="chatStore.loadingHistory">
           加载更多
@@ -15,7 +18,7 @@
 
       <div class="messages" ref="listRef">
         <div
-          v-for="msg in chatStore.messages"
+          v-for="msg in renderedMessages"
           :key="msg.id"
           :class="['msg-item', msg.fromUserId === userStore.user?.id ? 'from-me' : 'from-partner']"
         >
@@ -132,6 +135,14 @@ const lastMyReadId = computed(() => {
   if (!selfMessages.length) return null
   const last = selfMessages[selfMessages.length - 1]
   return last.status === 'read' ? last.id : null
+})
+
+const renderCount = ref(120)
+const renderedMessages = computed(() => {
+  const list = chatStore.messages
+  if (!Array.isArray(list)) return []
+  if (list.length <= renderCount.value) return list
+  return list.slice(list.length - renderCount.value)
 })
 
 const enrichMessages = () => {
@@ -255,6 +266,7 @@ const stopRecord = () => {
 
 const loadMore = async () => {
   await chatStore.loadHistory()
+  renderCount.value = Math.min(chatStore.messages.length, renderCount.value + 40)
   enrichMessages()
 }
 
@@ -302,6 +314,14 @@ onUnmounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.ws-hint {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #666;
+  background: #fff7f8;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .history-hint {
