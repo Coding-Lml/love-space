@@ -9,6 +9,7 @@ import com.lovespace.service.FileService;
 import com.lovespace.service.MomentService;
 import com.lovespace.util.UserContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +29,7 @@ public class MomentController {
      * 发布动态
      */
     @PostMapping
+    @PreAuthorize("@roleService.isOwner()")
     public Result<Moment> publish(
             @RequestParam(required = false) String content,
             @RequestParam(required = false) String location,
@@ -64,6 +66,7 @@ public class MomentController {
      * 获取动态列表
      */
     @GetMapping
+    @PreAuthorize("@roleService.isOwner()")
     public Result<Page<Moment>> getList(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {

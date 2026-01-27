@@ -5,6 +5,7 @@ import com.lovespace.entity.Anniversary;
 import com.lovespace.service.AnniversaryService;
 import com.lovespace.util.UserContext;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/anniversaries")
 @RequiredArgsConstructor
+@PreAuthorize("@roleService.isOwner()")
 public class AnniversaryController {
     
     private final AnniversaryService anniversaryService;

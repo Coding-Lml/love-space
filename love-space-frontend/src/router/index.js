@@ -9,6 +9,18 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
+    path: '/guest/home',
+    name: 'guestHome',
+    component: () => import('../views/GuestHome.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/guest/moments',
+    name: 'guestMoments',
+    component: () => import('../views/GuestMoments.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/',
     name: 'home',
     component: () => import('../views/Home.vue'),
@@ -81,8 +93,24 @@ router.beforeEach((to, from, next) => {
   
   if (to.meta.requiresAuth !== false && !userStore.isLoggedIn) {
     next({ name: 'login' })
-  } else if (to.name === 'login' && userStore.isLoggedIn) {
+    return
+  }
+
+  const guestPages = ['guestHome', 'guestMoments']
+
+  if (to.name === 'login' && userStore.isLoggedIn) {
+    next({ name: userStore.isOwner ? 'home' : 'guestHome' })
+    return
+  }
+
+  if (userStore.isLoggedIn && userStore.isGuest && !guestPages.includes(to.name)) {
+    next({ name: 'guestHome' })
+    return
+  }
+
+  if (userStore.isLoggedIn && userStore.isOwner && guestPages.includes(to.name)) {
     next({ name: 'home' })
+    return
   } else {
     next()
   }

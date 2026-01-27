@@ -22,9 +22,11 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
     private final UserMapper userMapper;
     private final FileService fileService;
     private final SpaceService spaceService;
+    private final HostSpaceService hostSpaceService;
 
     private static final String VISIBILITY_SPACE = "SPACE";
     private static final String VISIBILITY_PUBLIC = "PUBLIC";
+    private static final String VISIBILITY_GUEST = "GUEST";
     
     /**
      * 发布动态
@@ -77,14 +79,51 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
 
     public Result<Page<Moment>> getPublicList(Long currentUserId, Integer pageNum, Integer pageSize) {
         Page<Moment> page = new Page<>(pageNum, pageSize);
+        Long hostSpaceId = hostSpaceService.getHostSpaceId();
         Page<Moment> momentPage = this.page(page, new LambdaQueryWrapper<Moment>()
                 .eq(Moment::getVisibility, VISIBILITY_PUBLIC)
+                .eq(hostSpaceId != null, Moment::getSpaceId, hostSpaceId)
                 .orderByDesc(Moment::getCreatedAt));
 
         for (Moment moment : momentPage.getRecords()) {
             fillMomentData(moment, currentUserId);
         }
         return Result.success(momentPage);
+    }
+
+    public Result<Page<Moment>> getGuestWall(Long hostSpaceId, Long viewerUserId, Integer pageNum, Integer pageSize) {
+        Page<Moment> page = new Page<>(pageNum, pageSize);
+        Page<Moment> momentPage = this.page(page, new LambdaQueryWrapper<Moment>()
+                .eq(Moment::getSpaceId, hostSpaceId)
+                .in(Moment::getVisibility, VISIBILITY_PUBLIC, VISIBILITY_GUEST)
+                .orderByDesc(Moment::getCreatedAt));
+
+        for (Moment moment : momentPage.getRecords()) {
+            fillMomentData(moment, viewerUserId);
+        }
+        return Result.success(momentPage);
+    }
+
+    @Transactional
+    public Result<Moment> publishGuestMoment(Long guestUserId, Long hostSpaceId, String content, String location, List<MomentMedia> mediaList) {
+        Moment moment = new Moment();
+        moment.setSpaceId(hostSpaceId);
+        moment.setUserId(guestUserId);
+        moment.setContent(content);
+        moment.setLocation(location);
+        moment.setLikes(0);
+        moment.setVisibility(VISIBILITY_GUEST);
+        this.save(moment);
+
+        if (mediaList != null && !mediaList.isEmpty()) {
+            for (int i = 0; i < mediaList.size(); i++) {
+                MomentMedia media = mediaList.get(i);
+                media.setMomentId(moment.getId());
+                media.setSort(i);
+                mediaMapper.insert(media);
+            }
+        }
+        return Result.success("发布成功", moment);
     }
     
     /**
@@ -234,6 +273,20 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         return moments;
     }
 
+    public List<Moment> getRecentPublicMoments(Long hostUserId, Long viewerUserId, int limit) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(hostUserId);
+        List<Moment> moments = this.list(new LambdaQueryWrapper<Moment>()
+                .eq(Moment::getSpaceId, spaceId)
+                .eq(Moment::getVisibility, VISIBILITY_PUBLIC)
+                .orderByDesc(Moment::getCreatedAt)
+                .last("LIMIT " + limit));
+
+        for (Moment moment : moments) {
+            fillMomentData(moment, viewerUserId);
+        }
+        return moments;
+    }
+
     private String normalizeVisibility(String visibility) {
         if (visibility == null) {
             return VISIBILITY_SPACE;
@@ -241,6 +294,9 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         String v = visibility.trim().toUpperCase();
         if (VISIBILITY_PUBLIC.equals(v)) {
             return VISIBILITY_PUBLIC;
+        }
+        if (VISIBILITY_GUEST.equals(v)) {
+            return VISIBILITY_GUEST;
         }
         return VISIBILITY_SPACE;
     }
@@ -251,6 +307,10 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         }
         if (VISIBILITY_PUBLIC.equals(moment.getVisibility())) {
             return true;
+        }
+        if (VISIBILITY_GUEST.equals(moment.getVisibility())) {
+            Long hostSpaceId = hostSpaceService.getHostSpaceId();
+            return hostSpaceId != null && moment.getSpaceId() != null && moment.getSpaceId().equals(hostSpaceId);
         }
         if (currentSpaceId == null || moment.getSpaceId() == null) {
             return false;

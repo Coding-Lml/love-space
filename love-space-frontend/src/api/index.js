@@ -66,6 +66,14 @@ const api = {
   dashboard: {
     getData: () => http.get('/dashboard')
   },
+
+  guest: {
+    getDashboard: () => http.get('/guest/dashboard'),
+    getMoments: (pageNum = 1, pageSize = 10) => http.get('/guest/moments', { params: { pageNum, pageSize } }),
+    publishMoment: (formData) => http.post('/guest/moments', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
   
   // 动态相关
   moments: {

@@ -64,6 +64,37 @@ public class DashboardService {
         
         return data;
     }
+
+    public DashboardData getHostDashboardData(Long hostUserId, Long viewerUserId) {
+        DashboardData data = new DashboardData();
+
+        LocalDate startDate = LocalDate.parse(coupleStartDate);
+        LocalDateTime startDateTime = LocalDateTime.of(startDate, LocalTime.MIDNIGHT);
+        LocalDateTime now = LocalDateTime.now();
+
+        long totalDays = ChronoUnit.DAYS.between(startDate, LocalDate.now());
+        data.setTogetherDays(totalDays);
+        data.setStartDate(coupleStartDate);
+
+        Duration duration = Duration.between(startDateTime, now);
+        long totalSeconds = duration.getSeconds();
+        long hours = (totalSeconds % 86400) / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+
+        data.setTogetherHours(hours);
+        data.setTogetherMinutes(minutes);
+        data.setTogetherSeconds(seconds);
+        data.setTogetherText(formatTogetherText(totalDays, hours, minutes));
+
+        List<Anniversary> upcomingAnniversaries = anniversaryService.getUpcoming(hostUserId, 30);
+        data.setUpcomingAnniversaries(upcomingAnniversaries);
+
+        List<Moment> recentMoments = momentService.getRecentPublicMoments(hostUserId, viewerUserId, 5);
+        data.setRecentMoments(recentMoments);
+
+        return data;
+    }
     
     /**
      * 格式化在一起时间文本
