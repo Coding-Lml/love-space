@@ -1,6 +1,8 @@
 package com.lovespace.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -8,27 +10,19 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("chat_message")
-public class ChatMessage {
+@TableName("space_member")
+public class SpaceMember {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
     private Long spaceId;
 
-    private Long fromUserId;
+    private Long userId;
 
-    private Long toUserId;
+    private String role;
 
-    private String type;
-
-    private String content;
-
-    private String mediaUrl;
-
-    private String extra;
-
-    private String status;
-
-    private LocalDateTime createdAt;
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime joinedAt;
 }
+

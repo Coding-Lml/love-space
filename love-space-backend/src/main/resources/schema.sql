@@ -13,16 +13,38 @@ CREATE TABLE IF NOT EXISTS `user` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
+-- 空间表（用于隔离不同情侣/小圈子的数据）
+CREATE TABLE IF NOT EXISTS `space` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '空间ID',
+    `name` VARCHAR(100) NOT NULL COMMENT '空间名称',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='空间表';
+
+-- 空间成员表
+CREATE TABLE IF NOT EXISTS `space_member` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '成员ID',
+    `space_id` BIGINT NOT NULL COMMENT '空间ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `role` VARCHAR(20) NOT NULL COMMENT '角色: OWNER/MEMBER',
+    `joined_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
+    INDEX `idx_space_id` (`space_id`),
+    INDEX `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='空间成员表';
+
 -- 动态表
 CREATE TABLE IF NOT EXISTS `moment` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '动态ID',
+    `space_id` BIGINT NOT NULL COMMENT '空间ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `content` TEXT COMMENT '文字内容',
     `location` VARCHAR(100) DEFAULT NULL COMMENT '位置',
     `likes` INT DEFAULT 0 COMMENT '点赞数',
+    `visibility` VARCHAR(20) NOT NULL DEFAULT 'SPACE' COMMENT '可见性: SPACE/PUBLIC',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT DEFAULT 0 COMMENT '是否删除',
+    INDEX `idx_space_id` (`space_id`),
+    INDEX `idx_visibility` (`visibility`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='动态表';
@@ -62,6 +84,7 @@ CREATE TABLE IF NOT EXISTS `moment_like` (
 -- 日记表
 CREATE TABLE IF NOT EXISTS `diary` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '日记ID',
+    `space_id` BIGINT NOT NULL COMMENT '空间ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
     `title` VARCHAR(100) DEFAULT NULL COMMENT '标题',
     `content` TEXT NOT NULL COMMENT '内容',
@@ -72,6 +95,7 @@ CREATE TABLE IF NOT EXISTS `diary` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT DEFAULT 0 COMMENT '是否删除',
+    INDEX `idx_space_id` (`space_id`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_diary_date` (`diary_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='日记表';
@@ -79,6 +103,7 @@ CREATE TABLE IF NOT EXISTS `diary` (
 -- 纪念日表
 CREATE TABLE IF NOT EXISTS `anniversary` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '纪念日ID',
+    `space_id` BIGINT NOT NULL COMMENT '空间ID',
     `title` VARCHAR(100) NOT NULL COMMENT '标题',
     `description` VARCHAR(255) DEFAULT NULL COMMENT '描述',
     `date` DATE NOT NULL COMMENT '日期',
@@ -90,12 +115,14 @@ CREATE TABLE IF NOT EXISTS `anniversary` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` TINYINT DEFAULT 0 COMMENT '是否删除',
+    INDEX `idx_space_id` (`space_id`),
     INDEX `idx_date` (`date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='纪念日表';
 
 -- 聊天消息表（双人私聊）
 CREATE TABLE IF NOT EXISTS `chat_message` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '消息ID',
+    `space_id` BIGINT NOT NULL COMMENT '空间ID',
     `from_user_id` BIGINT NOT NULL COMMENT '发送方用户ID',
     `to_user_id` BIGINT NOT NULL COMMENT '接收方用户ID',
     `type` VARCHAR(20) NOT NULL COMMENT '消息类型: text/image/audio/sticker',
@@ -104,6 +131,7 @@ CREATE TABLE IF NOT EXISTS `chat_message` (
     `extra` JSON DEFAULT NULL COMMENT '扩展字段，如 {"duration":12}',
     `status` VARCHAR(20) NOT NULL DEFAULT 'sent' COMMENT '状态: sent/read',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+    INDEX `idx_space_id` (`space_id`),
     INDEX `idx_user_pair_time` (`from_user_id`, `to_user_id`, `created_at`),
     INDEX `idx_to_user_time` (`to_user_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天消息表';
@@ -117,11 +145,19 @@ INSERT INTO `user` (`username`, `password`, `nickname`, `avatar`) VALUES
 ('limenglong', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '李梦龙', '/uploads/images/default-avatar-boy.png'),
 ('zengfanrui', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '曾凡芮', '/uploads/images/default-avatar-girl.png');
 
+-- 初始化默认空间（情侣空间）
+INSERT INTO `space` (`name`) VALUES ('我们的空间');
+SET @default_space_id = LAST_INSERT_ID();
+INSERT INTO `space_member` (`space_id`, `user_id`, `role`)
+SELECT @default_space_id, `id`, 'OWNER' FROM `user` WHERE `username` = 'limenglong';
+INSERT INTO `space_member` (`space_id`, `user_id`, `role`)
+SELECT @default_space_id, `id`, 'MEMBER' FROM `user` WHERE `username` = 'zengfanrui';
+
 -- 插入恋爱纪念日
-INSERT INTO `anniversary` (`title`, `description`, `date`, `type`, `repeat_yearly`, `icon`) VALUES
-('在一起', '我们在一起的第一天 💕', '2026-01-21', 'past', 1, '💕');
+INSERT INTO `anniversary` (`space_id`, `title`, `description`, `date`, `type`, `repeat_yearly`, `icon`) VALUES
+(@default_space_id, '在一起', '我们在一起的第一天 💕', '2026-01-21', 'past', 1, '💕');
 
 -- 插入示例纪念日
-INSERT INTO `anniversary` (`title`, `description`, `date`, `type`, `repeat_yearly`, `icon`) VALUES
-('李梦龙生日', '李梦龙的生日', '2026-06-15', 'past', 1, '🎂'),
-('曾凡芮生日', '曾凡芮的生日', '2026-08-20', 'past', 1, '🎂');
+INSERT INTO `anniversary` (`space_id`, `title`, `description`, `date`, `type`, `repeat_yearly`, `icon`) VALUES
+(@default_space_id, '李梦龙生日', '李梦龙的生日', '2026-06-15', 'past', 1, '🎂'),
+(@default_space_id, '曾凡芮生日', '曾凡芮的生日', '2026-08-20', 'past', 1, '🎂');

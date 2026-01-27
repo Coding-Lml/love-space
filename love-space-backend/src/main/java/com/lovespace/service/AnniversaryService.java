@@ -21,11 +21,15 @@ public class AnniversaryService extends ServiceImpl<AnniversaryMapper, Anniversa
     
     @Value("${couple.start-date}")
     private String coupleStartDate;
+
+    private final SpaceService spaceService;
     
     /**
      * 添加纪念日
      */
-    public Result<Anniversary> add(Anniversary anniversary) {
+    public Result<Anniversary> add(Long userId, Anniversary anniversary) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
+        anniversary.setSpaceId(spaceId);
         this.save(anniversary);
         calculateDays(anniversary);
         return Result.success("添加成功", anniversary);
@@ -34,8 +38,10 @@ public class AnniversaryService extends ServiceImpl<AnniversaryMapper, Anniversa
     /**
      * 获取所有纪念日
      */
-    public Result<List<Anniversary>> getAll() {
+    public Result<List<Anniversary>> getAll(Long userId) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         List<Anniversary> list = this.list(new LambdaQueryWrapper<Anniversary>()
+                .eq(Anniversary::getSpaceId, spaceId)
                 .orderByAsc(Anniversary::getDate));
         
         for (Anniversary anniversary : list) {
@@ -48,9 +54,11 @@ public class AnniversaryService extends ServiceImpl<AnniversaryMapper, Anniversa
     /**
      * 获取即将到来的纪念日（未来30天内）
      */
-    public List<Anniversary> getUpcoming(int days) {
+    public List<Anniversary> getUpcoming(Long userId, int days) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         LocalDate today = LocalDate.now();
-        List<Anniversary> allList = this.list();
+        List<Anniversary> allList = this.list(new LambdaQueryWrapper<Anniversary>()
+                .eq(Anniversary::getSpaceId, spaceId));
         
         return allList.stream()
                 .peek(this::calculateDays)
@@ -84,11 +92,16 @@ public class AnniversaryService extends ServiceImpl<AnniversaryMapper, Anniversa
     /**
      * 更新纪念日
      */
-    public Result<Anniversary> update(Anniversary anniversary) {
+    public Result<Anniversary> update(Long userId, Anniversary anniversary) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         Anniversary exist = this.getById(anniversary.getId());
         if (exist == null) {
             return Result.error("纪念日不存在");
         }
+        if (exist.getSpaceId() == null || !exist.getSpaceId().equals(spaceId)) {
+            return Result.error("无权操作");
+        }
+        anniversary.setSpaceId(spaceId);
         
         this.updateById(anniversary);
         calculateDays(anniversary);
@@ -98,10 +111,14 @@ public class AnniversaryService extends ServiceImpl<AnniversaryMapper, Anniversa
     /**
      * 删除纪念日
      */
-    public Result<Void> delete(Long id) {
+    public Result<Void> delete(Long userId, Long id) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         Anniversary anniversary = this.getById(id);
         if (anniversary == null) {
             return Result.error("纪念日不存在");
+        }
+        if (anniversary.getSpaceId() == null || !anniversary.getSpaceId().equals(spaceId)) {
+            return Result.error("无权操作");
         }
         
         // 不允许删除"在一起"这个纪念日
@@ -116,12 +133,14 @@ public class AnniversaryService extends ServiceImpl<AnniversaryMapper, Anniversa
     /**
      * 获取在一起的天数详情
      */
-    public Result<Anniversary> getTogetherDays() {
+    public Result<Anniversary> getTogetherDays(Long userId) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         LocalDate startDate = LocalDate.parse(coupleStartDate);
         LocalDate today = LocalDate.now();
         long days = ChronoUnit.DAYS.between(startDate, today);
         
         Anniversary anniversary = new Anniversary();
+        anniversary.setSpaceId(spaceId);
         anniversary.setTitle("在一起");
         anniversary.setDate(startDate);
         anniversary.setType("past");

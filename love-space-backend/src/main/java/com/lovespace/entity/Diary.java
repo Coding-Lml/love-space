@@ -12,6 +12,8 @@ public class Diary {
     @TableId(type = IdType.AUTO)
     private Long id;
     
+    private Long spaceId;
+    
     private Long userId;
     
     private String title;

@@ -1,14 +1,12 @@
 <template>
   <div class="moments-page">
-    <van-nav-bar title="我们的动态">
+    <van-nav-bar title="动态广场" left-arrow @click-left="router.back()">
       <template #right>
-        <van-icon name="fire-o" size="20" color="#ff6b81" @click="goSquare" />
+        <van-icon name="plus" size="20" color="#ff6b81" @click="goCreate" />
       </template>
     </van-nav-bar>
     
-    <!-- 下拉刷新 -->
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
-      <!-- 动态列表 -->
       <van-list
         v-model:loading="loading"
         :finished="finished"
@@ -16,40 +14,34 @@
         @load="loadMore"
       >
         <div v-for="moment in moments" :key="moment.id" v-memo="[moment.id, moment.likes, moment.liked, moment.comments?.length]" class="moment-card card">
-          <!-- 用户信息 -->
           <div class="moment-header">
             <img :src="moment.user?.avatar" class="avatar" loading="lazy" decoding="async" />
             <div class="user-info">
               <div class="nickname">{{ moment.user?.nickname }}</div>
-              <div class="subline">
-                <div class="time-text">{{ formatTime(moment.createdAt) }}</div>
-                <van-tag v-if="moment.visibility === 'PUBLIC'" type="danger" plain size="medium">公开</van-tag>
-              </div>
+              <div class="time-text">{{ formatTime(moment.createdAt) }}</div>
             </div>
-            <van-icon 
+            <van-icon
               v-if="moment.userId === userStore.user?.id"
-              name="ellipsis" 
-              @click="showActions(moment)" 
+              name="ellipsis"
+              @click="showActions(moment)"
             />
           </div>
           
-          <!-- 内容 -->
           <div class="moment-content" v-if="moment.content">
             {{ moment.content }}
           </div>
           
-          <!-- 媒体文件 -->
-          <div 
-            v-if="moment.mediaList?.length" 
+          <div
+            v-if="moment.mediaList?.length"
             class="media-grid"
-            :class="{ 
+            :class="{
               single: moment.mediaList.length === 1,
               double: moment.mediaList.length === 2
             }"
           >
-            <div 
-              v-for="(media, index) in moment.mediaList" 
-              :key="media.id" 
+            <div
+              v-for="(media, index) in moment.mediaList"
+              :key="media.id"
               class="media-item"
               @click="onMediaClick(moment.mediaList, index)"
             >
@@ -58,13 +50,11 @@
             </div>
           </div>
           
-          <!-- 位置 -->
           <div class="moment-location" v-if="moment.location">
             <van-icon name="location-o" />
             {{ moment.location }}
           </div>
           
-          <!-- 互动栏 -->
           <div class="moment-actions">
             <div class="action-item" @click="toggleLike(moment)">
               <van-icon :name="moment.liked ? 'like' : 'like-o'" :color="moment.liked ? '#ff6b81' : ''" />
@@ -76,7 +66,6 @@
             </div>
           </div>
           
-          <!-- 评论列表 -->
           <div class="comments-section" v-if="moment.comments?.length">
             <div v-for="comment in moment.comments" :key="comment.id" class="comment-item">
               <span class="comment-user">{{ comment.user?.nickname }}：</span>
@@ -85,17 +74,10 @@
           </div>
         </div>
         
-        <!-- 空状态 -->
-        <van-empty v-if="!loading && !moments.length" description="还没有动态，快来发布吧~" />
+        <van-empty v-if="!loading && !moments.length" description="还没有公开动态，快来发布吧~" />
       </van-list>
     </van-pull-refresh>
     
-    <!-- 发布按钮 -->
-    <div class="publish-btn" @click="goCreate">
-      <van-icon name="plus" />
-    </div>
-    
-    <!-- 操作菜单 -->
     <van-action-sheet
       v-model:show="showActionSheet"
       :actions="actions"
@@ -103,7 +85,6 @@
       @select="onActionSelect"
     />
     
-    <!-- 评论输入框 -->
     <van-popup v-model:show="showCommentPopup" position="bottom" round>
       <div class="comment-input-wrapper">
         <van-field
@@ -148,10 +129,9 @@ const actions = [
 const showCommentPopup = ref(false)
 const commentText = ref('')
 
-// 加载数据
 const loadMore = async () => {
   try {
-    const res = await api.moments.getList(pageNum.value)
+    const res = await api.moments.getPublicList(pageNum.value)
     if (res.code === 200) {
       if (pageNum.value === 1) {
         moments.value = res.data.records
@@ -168,7 +148,6 @@ const loadMore = async () => {
   }
 }
 
-// 下拉刷新
 const onRefresh = async () => {
   pageNum.value = 1
   finished.value = false
@@ -176,7 +155,6 @@ const onRefresh = async () => {
   refreshing.value = false
 }
 
-// 格式化时间
 const formatTime = (time) => {
   const now = dayjs()
   const target = dayjs(time)
@@ -189,7 +167,6 @@ const formatTime = (time) => {
   return target.format('MM-DD HH:mm')
 }
 
-// 点赞
 const toggleLike = async (moment) => {
   try {
     const res = await api.moments.like(moment.id)
@@ -202,13 +179,11 @@ const toggleLike = async (moment) => {
   }
 }
 
-// 显示操作菜单
 const showActions = (moment) => {
   currentMoment.value = moment
   showActionSheet.value = true
 }
 
-// 操作选择
 const onActionSelect = async (action) => {
   if (action.name === '删除') {
     try {
@@ -222,12 +197,10 @@ const onActionSelect = async (action) => {
         showToast('删除成功')
       }
     } catch (e) {
-      // 取消删除
     }
   }
 }
 
-// 评论
 const showCommentInput = (moment) => {
   currentMoment.value = moment
   commentText.value = ''
@@ -256,9 +229,7 @@ const onMediaClick = (mediaList, index) => {
   showImagePreview({ images, startPosition })
 }
 
-// 发布
 const goCreate = () => router.push({ name: 'momentCreate' })
-const goSquare = () => router.push({ name: 'square' })
 </script>
 
 <style scoped>
@@ -280,12 +251,6 @@ const goSquare = () => router.push({ name: 'square' })
 
 .user-info {
   flex: 1;
-}
-
-.subline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .nickname {
@@ -347,22 +312,6 @@ const goSquare = () => router.push({ name: 'square' })
 
 .comment-text {
   color: var(--text-color);
-}
-
-.publish-btn {
-  position: fixed;
-  right: 20px;
-  bottom: 80px;
-  width: 56px;
-  height: 56px;
-  background: linear-gradient(135deg, #ff6b81 0%, #e84a5f 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 28px;
-  box-shadow: 0 4px 12px rgba(255, 107, 129, 0.4);
 }
 
 .comment-input-wrapper {

@@ -9,38 +9,90 @@
     </div>
     
     <div class="login-card">
-      <van-form @submit="onSubmit">
-        <van-cell-group inset>
-          <van-field
-            v-model="form.username"
-            name="username"
-            label="用户名"
-            placeholder="请输入用户名"
-            :rules="[{ required: true, message: '请输入用户名' }]"
-          />
-          <van-field
-            v-model="form.password"
-            type="password"
-            name="password"
-            label="密码"
-            placeholder="请输入密码"
-            :rules="[{ required: true, message: '请输入密码' }]"
-          />
-        </van-cell-group>
-        
-        <div class="login-btn-wrapper">
-          <van-button 
-            round 
-            block 
-            type="primary" 
-            native-type="submit"
-            :loading="loading"
-            loading-text="登录中..."
-          >
-            进入我们的空间 💕
-          </van-button>
-        </div>
-      </van-form>
+      <van-tabs v-model:active="activeTab" animated>
+        <van-tab title="登录">
+          <van-form @submit="onLogin">
+            <van-cell-group inset>
+              <van-field
+                v-model="loginForm.username"
+                name="username"
+                label="用户名"
+                placeholder="请输入用户名"
+                :rules="[{ required: true, message: '请输入用户名' }]"
+              />
+              <van-field
+                v-model="loginForm.password"
+                type="password"
+                name="password"
+                label="密码"
+                placeholder="请输入密码"
+                :rules="[{ required: true, message: '请输入密码' }]"
+              />
+            </van-cell-group>
+            
+            <div class="login-btn-wrapper">
+              <van-button 
+                round 
+                block 
+                type="primary" 
+                native-type="submit"
+                :loading="loading"
+                loading-text="登录中..."
+              >
+                登录
+              </van-button>
+            </div>
+          </van-form>
+        </van-tab>
+        <van-tab title="注册">
+          <van-form @submit="onRegister">
+            <van-cell-group inset>
+              <van-field
+                v-model="registerForm.username"
+                name="username"
+                label="用户名"
+                placeholder="3-50位，建议英文/数字"
+                :rules="[{ required: true, message: '请输入用户名' }]"
+              />
+              <van-field
+                v-model="registerForm.nickname"
+                name="nickname"
+                label="昵称"
+                placeholder="可选"
+              />
+              <van-field
+                v-model="registerForm.password"
+                type="password"
+                name="password"
+                label="密码"
+                placeholder="至少6位"
+                :rules="[{ required: true, message: '请输入密码' }]"
+              />
+              <van-field
+                v-model="registerForm.confirmPassword"
+                type="password"
+                name="confirmPassword"
+                label="确认密码"
+                placeholder="再输入一次密码"
+                :rules="[{ required: true, message: '请确认密码' }]"
+              />
+            </van-cell-group>
+            
+            <div class="login-btn-wrapper">
+              <van-button 
+                round 
+                block 
+                type="primary" 
+                native-type="submit"
+                :loading="loading"
+                loading-text="注册中..."
+              >
+                注册并进入
+              </van-button>
+            </div>
+          </van-form>
+        </van-tab>
+      </van-tabs>
     </div>
     
     <div class="login-footer">
@@ -60,15 +112,22 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const loading = ref(false)
-const form = ref({
+const activeTab = ref(0)
+const loginForm = ref({
   username: '',
   password: ''
 })
+const registerForm = ref({
+  username: '',
+  nickname: '',
+  password: '',
+  confirmPassword: ''
+})
 
-const onSubmit = async () => {
+const onLogin = async () => {
   loading.value = true
   try {
-    const res = await userStore.login(form.value.username, form.value.password)
+    const res = await userStore.login(loginForm.value.username, loginForm.value.password)
     if (res.code === 200) {
       showToast({
         message: '欢迎回来 💕',
@@ -80,6 +139,30 @@ const onSubmit = async () => {
     }
   } catch (e) {
     showToast('登录失败，请重试')
+  } finally {
+    loading.value = false
+  }
+}
+
+const onRegister = async () => {
+  if (registerForm.value.password !== registerForm.value.confirmPassword) {
+    showToast('两次输入的密码不一致')
+    return
+  }
+  loading.value = true
+  try {
+    const res = await userStore.register(registerForm.value.username, registerForm.value.password, registerForm.value.nickname)
+    if (res.code === 200) {
+      showToast({
+        message: '注册成功 💕',
+        icon: 'success'
+      })
+      router.push({ name: 'home' })
+    } else {
+      showToast(res.message || '注册失败')
+    }
+  } catch (e) {
+    showToast('注册失败，请重试')
   } finally {
     loading.value = false
   }

@@ -22,6 +22,18 @@ export const useUserStore = defineStore('user', () => {
     }
     return res
   }
+
+  async function register(username, password, nickname) {
+    const res = await api.auth.register(username, password, nickname)
+    if (res.code === 200) {
+      token.value = res.data.token
+      user.value = res.data.user
+      localStorage.setItem('token', res.data.token)
+      localStorage.setItem('user', JSON.stringify(res.data.user))
+      await fetchPartner()
+    }
+    return res
+  }
   
   // 登出
   function logout() {
@@ -60,6 +72,7 @@ export const useUserStore = defineStore('user', () => {
     partner,
     isLoggedIn,
     login,
+    register,
     logout,
     fetchPartner,
     updateProfile

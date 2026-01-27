@@ -51,6 +51,11 @@
       
       <!-- 位置 -->
       <van-cell-group inset>
+        <van-cell title="公开到广场">
+          <template #right-icon>
+            <van-switch v-model="form.isPublic" size="22px" />
+          </template>
+        </van-cell>
         <van-field
           v-model="form.location"
           label="位置"
@@ -72,7 +77,8 @@ const router = useRouter()
 
 const form = ref({
   content: '',
-  location: ''
+  location: '',
+  isPublic: false
 })
 const fileList = ref([])
 const submitting = ref(false)
@@ -143,6 +149,7 @@ const submit = async () => {
     if (form.value.location) {
       formData.append('location', form.value.location)
     }
+    formData.append('visibility', form.value.isPublic ? 'PUBLIC' : 'SPACE')
     
     // 添加文件
     fileList.value.forEach(file => {

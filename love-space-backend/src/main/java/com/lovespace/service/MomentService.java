@@ -21,18 +21,25 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
     private final MomentLikeMapper likeMapper;
     private final UserMapper userMapper;
     private final FileService fileService;
+    private final SpaceService spaceService;
+
+    private static final String VISIBILITY_SPACE = "SPACE";
+    private static final String VISIBILITY_PUBLIC = "PUBLIC";
     
     /**
      * 发布动态
      */
     @Transactional
-    public Result<Moment> publish(Long userId, String content, String location, List<MomentMedia> mediaList) {
+    public Result<Moment> publish(Long userId, String content, String location, String visibility, List<MomentMedia> mediaList) {
         // 创建动态
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         Moment moment = new Moment();
+        moment.setSpaceId(spaceId);
         moment.setUserId(userId);
         moment.setContent(content);
         moment.setLocation(location);
         moment.setLikes(0);
+        moment.setVisibility(normalizeVisibility(visibility));
         this.save(moment);
         
         // 保存媒体文件
@@ -53,9 +60,11 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
      */
     public Result<Page<Moment>> getList(Long currentUserId, Integer pageNum, Integer pageSize) {
         Page<Moment> page = new Page<>(pageNum, pageSize);
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(currentUserId);
         
         // 查询动态
         Page<Moment> momentPage = this.page(page, new LambdaQueryWrapper<Moment>()
+                .eq(Moment::getSpaceId, spaceId)
                 .orderByDesc(Moment::getCreatedAt));
         
         // 填充关联数据
@@ -63,6 +72,18 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
             fillMomentData(moment, currentUserId);
         }
         
+        return Result.success(momentPage);
+    }
+
+    public Result<Page<Moment>> getPublicList(Long currentUserId, Integer pageNum, Integer pageSize) {
+        Page<Moment> page = new Page<>(pageNum, pageSize);
+        Page<Moment> momentPage = this.page(page, new LambdaQueryWrapper<Moment>()
+                .eq(Moment::getVisibility, VISIBILITY_PUBLIC)
+                .orderByDesc(Moment::getCreatedAt));
+
+        for (Moment moment : momentPage.getRecords()) {
+            fillMomentData(moment, currentUserId);
+        }
         return Result.success(momentPage);
     }
     
@@ -73,6 +94,10 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         Moment moment = this.getById(momentId);
         if (moment == null) {
             return Result.error("动态不存在");
+        }
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(currentUserId);
+        if (!canAccessMoment(moment, spaceId)) {
+            return Result.error(403, "无权限访问");
         }
         fillMomentData(moment, currentUserId);
         return Result.success(moment);
@@ -86,6 +111,10 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         Moment moment = this.getById(momentId);
         if (moment == null) {
             return Result.error("动态不存在");
+        }
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
+        if (!canAccessMoment(moment, spaceId)) {
+            return Result.error(403, "无权限操作");
         }
         if (!moment.getUserId().equals(userId)) {
             return Result.error("只能删除自己的动态");
@@ -117,6 +146,10 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         Moment moment = this.getById(momentId);
         if (moment == null) {
             return Result.error("动态不存在");
+        }
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
+        if (!canAccessMoment(moment, spaceId)) {
+            return Result.error(403, "无权限操作");
         }
         
         // 检查是否已点赞
@@ -152,6 +185,10 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         if (moment == null) {
             return Result.error("动态不存在");
         }
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
+        if (!canAccessMoment(moment, spaceId)) {
+            return Result.error(403, "无权限操作");
+        }
         
         Comment comment = new Comment();
         comment.setMomentId(momentId);
@@ -185,7 +222,9 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
      * 获取最新动态（首页用）
      */
     public List<Moment> getRecentMoments(Long currentUserId, int limit) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(currentUserId);
         List<Moment> moments = this.list(new LambdaQueryWrapper<Moment>()
+                .eq(Moment::getSpaceId, spaceId)
                 .orderByDesc(Moment::getCreatedAt)
                 .last("LIMIT " + limit));
         
@@ -193,6 +232,30 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
             fillMomentData(moment, currentUserId);
         }
         return moments;
+    }
+
+    private String normalizeVisibility(String visibility) {
+        if (visibility == null) {
+            return VISIBILITY_SPACE;
+        }
+        String v = visibility.trim().toUpperCase();
+        if (VISIBILITY_PUBLIC.equals(v)) {
+            return VISIBILITY_PUBLIC;
+        }
+        return VISIBILITY_SPACE;
+    }
+
+    private boolean canAccessMoment(Moment moment, Long currentSpaceId) {
+        if (moment == null) {
+            return false;
+        }
+        if (VISIBILITY_PUBLIC.equals(moment.getVisibility())) {
+            return true;
+        }
+        if (currentSpaceId == null || moment.getSpaceId() == null) {
+            return false;
+        }
+        return currentSpaceId.equals(moment.getSpaceId());
     }
     
     /**

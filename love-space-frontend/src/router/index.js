@@ -27,6 +27,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/square',
+    name: 'square',
+    component: () => import('../views/Square.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/diary',
     name: 'diary',
     component: () => import('../views/Diary.vue'),
@@ -48,6 +54,12 @@ const routes = [
     path: '/profile',
     name: 'profile',
     component: () => import('../views/Profile.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/space',
+    name: 'space',
+    component: () => import('../views/Space.vue'),
     meta: { requiresAuth: true }
   },
   {

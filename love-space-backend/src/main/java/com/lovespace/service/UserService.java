@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lovespace.common.Result;
 import com.lovespace.dto.LoginRequest;
 import com.lovespace.dto.LoginResponse;
+import com.lovespace.dto.RegisterRequest;
 import com.lovespace.entity.User;
 import com.lovespace.mapper.UserMapper;
 import com.lovespace.util.JwtUtil;
@@ -18,6 +19,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     
     private final JwtUtil jwtUtil;
     private final PasswordUtil passwordUtil;
+    private final SpaceService spaceService;
     
     /**
      * 用户登录
@@ -40,6 +42,32 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
         
         return Result.success("登录成功", new LoginResponse(token, user));
+    }
+
+    public Result<LoginResponse> register(RegisterRequest request) {
+        String username = request.getUsername() == null ? "" : request.getUsername().trim();
+        String password = request.getPassword();
+        String nickname = request.getNickname() == null ? "" : request.getNickname().trim();
+
+        User exist = this.getOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, username)
+                .last("LIMIT 1"));
+        if (exist != null) {
+            return Result.error("用户名已存在");
+        }
+
+        User user = new User();
+        user.setUsername(username);
+        user.setPassword(passwordUtil.encode(password));
+        user.setNickname(nickname.isBlank() ? username : nickname);
+        user.setAvatar("/uploads/images/default-avatar-boy.png");
+        this.save(user);
+
+        spaceService.getOrCreatePrimarySpaceId(user.getId());
+
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+        user.setPassword(null);
+        return Result.success("注册成功", new LoginResponse(token, user));
     }
     
     /**
@@ -99,8 +127,8 @@ public class UserService extends ServiceImpl<UserMapper, User> {
      * 获取另一半信息
      */
     public Result<User> getPartner(Long currentUserId) {
-        User partner = this.getOne(new LambdaQueryWrapper<User>()
-                .ne(User::getId, currentUserId));
+        Long partnerId = spaceService.getPartnerUserIdInPrimarySpace(currentUserId);
+        User partner = partnerId == null ? null : this.getById(partnerId);
         if (partner != null) {
             partner.setPassword(null);
         }

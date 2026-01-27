@@ -31,6 +31,7 @@ public class MomentController {
     public Result<Moment> publish(
             @RequestParam(required = false) String content,
             @RequestParam(required = false) String location,
+            @RequestParam(defaultValue = "SPACE") String visibility,
             @RequestParam(required = false) MultipartFile[] files) {
         
         Long userId = UserContext.getCurrentUserId();
@@ -56,7 +57,7 @@ public class MomentController {
             }
         }
         
-        return momentService.publish(userId, content, location, mediaList);
+        return momentService.publish(userId, content, location, visibility, mediaList);
     }
     
     /**
@@ -68,6 +69,14 @@ public class MomentController {
             @RequestParam(defaultValue = "10") Integer pageSize) {
         Long userId = UserContext.getCurrentUserId();
         return momentService.getList(userId, pageNum, pageSize);
+    }
+
+    @GetMapping("/public")
+    public Result<Page<Moment>> getPublicList(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        Long userId = UserContext.getCurrentUserId();
+        return momentService.getPublicList(userId, pageNum, pageSize);
     }
     
     /**

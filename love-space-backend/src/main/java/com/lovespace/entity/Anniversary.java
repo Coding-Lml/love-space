@@ -12,6 +12,8 @@ public class Anniversary {
     @TableId(type = IdType.AUTO)
     private Long id;
     
+    private Long spaceId;
+    
     private String title;
     
     private String description;

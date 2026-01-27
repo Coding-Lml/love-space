@@ -55,7 +55,7 @@ public class DashboardService {
         data.setTogetherText(formatTogetherText(totalDays, hours, minutes));
         
         // 获取即将到来的纪念日
-        List<Anniversary> upcomingAnniversaries = anniversaryService.getUpcoming(30);
+        List<Anniversary> upcomingAnniversaries = anniversaryService.getUpcoming(currentUserId, 30);
         data.setUpcomingAnniversaries(upcomingAnniversaries);
         
         // 获取最新动态

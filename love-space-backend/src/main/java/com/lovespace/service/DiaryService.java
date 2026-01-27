@@ -20,13 +20,16 @@ import java.util.List;
 public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
     
     private final UserMapper userMapper;
+    private final SpaceService spaceService;
     
     /**
      * 写日记
      */
     public Result<Diary> write(Long userId, Diary diary) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         // 检查当天是否已写过日记
         Diary existDiary = this.getOne(new LambdaQueryWrapper<Diary>()
+                .eq(Diary::getSpaceId, spaceId)
                 .eq(Diary::getUserId, userId)
                 .eq(Diary::getDiaryDate, diary.getDiaryDate()));
         
@@ -42,6 +45,7 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
         }
         
         // 新建日记
+        diary.setSpaceId(spaceId);
         diary.setUserId(userId);
         if (diary.getDiaryDate() == null) {
             diary.setDiaryDate(LocalDate.now());
@@ -60,12 +64,13 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
     public Result<Page<Diary>> getList(Long userId, Integer pageNum, Integer pageSize) {
         Page<Diary> page = new Page<>(pageNum, pageSize);
 
-        Long partnerId = getPartnerId(userId);
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
+        Long partnerId = spaceService.getPartnerUserIdInPrimarySpace(userId);
         LambdaQueryWrapper<Diary> wrapper = new LambdaQueryWrapper<Diary>()
                 .and(w -> {
-                    w.eq(Diary::getUserId, userId);
+                    w.eq(Diary::getSpaceId, spaceId).eq(Diary::getUserId, userId);
                     if (partnerId != null) {
-                        w.or().eq(Diary::getUserId, partnerId).eq(Diary::getVisibility, "both");
+                        w.or().eq(Diary::getSpaceId, spaceId).eq(Diary::getUserId, partnerId).eq(Diary::getVisibility, "both");
                     }
                 })
                 .orderByDesc(Diary::getDiaryDate);
@@ -88,12 +93,13 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
 
-        Long partnerId = getPartnerId(userId);
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
+        Long partnerId = spaceService.getPartnerUserIdInPrimarySpace(userId);
         List<Diary> diaries = this.list(new LambdaQueryWrapper<Diary>()
                 .and(w -> {
-                    w.eq(Diary::getUserId, userId);
+                    w.eq(Diary::getSpaceId, spaceId).eq(Diary::getUserId, userId);
                     if (partnerId != null) {
-                        w.or().eq(Diary::getUserId, partnerId).eq(Diary::getVisibility, "both");
+                        w.or().eq(Diary::getSpaceId, spaceId).eq(Diary::getUserId, partnerId).eq(Diary::getVisibility, "both");
                     }
                 })
                 .between(Diary::getDiaryDate, startDate, endDate)
@@ -110,14 +116,17 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
      * 获取某天的日记
      */
     public Result<Diary> getByDate(Long userId, LocalDate date) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         Diary diary = this.getOne(new LambdaQueryWrapper<Diary>()
+                .eq(Diary::getSpaceId, spaceId)
                 .eq(Diary::getUserId, userId)
                 .eq(Diary::getDiaryDate, date));
 
         if (diary == null) {
-            Long partnerId = getPartnerId(userId);
+            Long partnerId = spaceService.getPartnerUserIdInPrimarySpace(userId);
             if (partnerId != null) {
                 diary = this.getOne(new LambdaQueryWrapper<Diary>()
+                        .eq(Diary::getSpaceId, spaceId)
                         .eq(Diary::getUserId, partnerId)
                         .eq(Diary::getDiaryDate, date)
                         .eq(Diary::getVisibility, "both"));
@@ -134,13 +143,17 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
      * 获取日记详情
      */
     public Result<Diary> getDetail(Long diaryId, Long userId) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         Diary diary = this.getById(diaryId);
         if (diary == null) {
             return Result.error("日记不存在");
         }
+        if (diary.getSpaceId() == null || !diary.getSpaceId().equals(spaceId)) {
+            return Result.error("无权查看此日记");
+        }
 
         if (!diary.getUserId().equals(userId)) {
-            Long partnerId = getPartnerId(userId);
+            Long partnerId = spaceService.getPartnerUserIdInPrimarySpace(userId);
             if (partnerId == null
                     || !diary.getUserId().equals(partnerId)
                     || !"both".equals(diary.getVisibility())) {
@@ -156,9 +169,13 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
      * 删除日记
      */
     public Result<Void> delete(Long diaryId, Long userId) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         Diary diary = this.getById(diaryId);
         if (diary == null) {
             return Result.error("日记不存在");
+        }
+        if (diary.getSpaceId() == null || !diary.getSpaceId().equals(spaceId)) {
+            return Result.error("无权操作");
         }
         if (!diary.getUserId().equals(userId)) {
             return Result.error("只能删除自己的日记");
@@ -177,12 +194,5 @@ public class DiaryService extends ServiceImpl<DiaryMapper, Diary> {
             user.setPassword(null);
         }
         diary.setUser(user);
-    }
-
-    private Long getPartnerId(Long userId) {
-        User partner = userMapper.selectOne(new LambdaQueryWrapper<User>()
-                .ne(User::getId, userId)
-                .last("LIMIT 1"));
-        return partner == null ? null : partner.getId();
     }
 }

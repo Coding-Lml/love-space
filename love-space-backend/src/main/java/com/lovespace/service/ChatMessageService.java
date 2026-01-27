@@ -3,9 +3,7 @@ package com.lovespace.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lovespace.entity.ChatMessage;
-import com.lovespace.entity.User;
 import com.lovespace.mapper.ChatMessageMapper;
-import com.lovespace.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,17 +13,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ChatMessageService extends ServiceImpl<ChatMessageMapper, ChatMessage> {
 
-    private final UserMapper userMapper;
+    private final SpaceService spaceService;
 
     public Long getPartnerId(Long userId) {
-        User partner = userMapper.selectOne(new LambdaQueryWrapper<User>()
-                .ne(User::getId, userId)
-                .last("LIMIT 1"));
-        return partner == null ? null : partner.getId();
+        return spaceService.getPartnerUserIdInPrimarySpace(userId);
     }
 
     public List<ChatMessage> getHistory(Long userId, Long partnerId, Long beforeId, int size) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         LambdaQueryWrapper<ChatMessage> wrapper = new LambdaQueryWrapper<ChatMessage>()
+                .eq(ChatMessage::getSpaceId, spaceId)
                 .and(w -> w.eq(ChatMessage::getFromUserId, userId)
                         .eq(ChatMessage::getToUserId, partnerId)
                         .or()
@@ -44,7 +41,9 @@ public class ChatMessageService extends ServiceImpl<ChatMessageMapper, ChatMessa
     }
 
     public List<Long> markAllRead(Long userId, Long partnerId) {
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
         LambdaQueryWrapper<ChatMessage> wrapper = new LambdaQueryWrapper<ChatMessage>()
+                .eq(ChatMessage::getSpaceId, spaceId)
                 .eq(ChatMessage::getToUserId, userId)
                 .eq(ChatMessage::getFromUserId, partnerId)
                 .eq(ChatMessage::getStatus, "sent");

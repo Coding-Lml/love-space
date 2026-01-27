@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.lovespace.entity.ChatMessage;
 import com.lovespace.service.ChatMessageService;
+import com.lovespace.service.SpaceService;
 import com.lovespace.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
     private final ChatMessageService chatMessageService;
+    private final SpaceService spaceService;
 
     private final Map<Long, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
 
@@ -68,8 +70,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         if (toUserId == null) {
             return;
         }
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(fromUserId);
+        if (spaceId == null) {
+            return;
+        }
 
         ChatMessage chatMessage = new ChatMessage();
+        chatMessage.setSpaceId(spaceId);
         chatMessage.setFromUserId(fromUserId);
         chatMessage.setToUserId(toUserId);
         chatMessage.setType(type);

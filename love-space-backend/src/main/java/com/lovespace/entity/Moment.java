@@ -12,6 +12,8 @@ public class Moment {
     @TableId(type = IdType.AUTO)
     private Long id;
     
+    private Long spaceId;
+    
     private Long userId;
     
     private String content;
@@ -19,6 +21,8 @@ public class Moment {
     private String location;
     
     private Integer likes;
+
+    private String visibility;
     
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

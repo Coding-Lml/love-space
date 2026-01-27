@@ -3,6 +3,7 @@ package com.lovespace.controller;
 import com.lovespace.common.Result;
 import com.lovespace.dto.LoginRequest;
 import com.lovespace.dto.LoginResponse;
+import com.lovespace.dto.RegisterRequest;
 import com.lovespace.entity.User;
 import com.lovespace.security.LoginRateLimiter;
 import com.lovespace.service.UserService;
@@ -34,6 +35,17 @@ public class AuthController {
             return Result.error(429, "登录过于频繁，请稍后再试");
         }
         return userService.login(request);
+    }
+
+    @PostMapping("/register")
+    public Result<LoginResponse> register(HttpServletRequest httpServletRequest, @Valid @RequestBody RegisterRequest request) {
+        String clientIp = getClientIp(httpServletRequest);
+        String username = request.getUsername() == null ? "" : request.getUsername().trim();
+        String key = "register:" + clientIp + ":" + username;
+        if (!loginRateLimiter.tryAcquire(key)) {
+            return Result.error(429, "注册过于频繁，请稍后再试");
+        }
+        return userService.register(request);
     }
     
     /**

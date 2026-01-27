@@ -3,6 +3,7 @@ package com.lovespace.controller;
 import com.lovespace.common.Result;
 import com.lovespace.entity.Anniversary;
 import com.lovespace.service.AnniversaryService;
+import com.lovespace.util.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +21,8 @@ public class AnniversaryController {
      */
     @PostMapping
     public Result<Anniversary> add(@RequestBody Anniversary anniversary) {
-        return anniversaryService.add(anniversary);
+        Long userId = UserContext.getCurrentUserId();
+        return anniversaryService.add(userId, anniversary);
     }
     
     /**
@@ -28,7 +30,8 @@ public class AnniversaryController {
      */
     @GetMapping
     public Result<List<Anniversary>> getAll() {
-        return anniversaryService.getAll();
+        Long userId = UserContext.getCurrentUserId();
+        return anniversaryService.getAll(userId);
     }
     
     /**
@@ -36,7 +39,8 @@ public class AnniversaryController {
      */
     @GetMapping("/together")
     public Result<Anniversary> getTogetherDays() {
-        return anniversaryService.getTogetherDays();
+        Long userId = UserContext.getCurrentUserId();
+        return anniversaryService.getTogetherDays(userId);
     }
     
     /**
@@ -44,7 +48,8 @@ public class AnniversaryController {
      */
     @GetMapping("/upcoming")
     public Result<List<Anniversary>> getUpcoming(@RequestParam(defaultValue = "30") Integer days) {
-        List<Anniversary> list = anniversaryService.getUpcoming(days);
+        Long userId = UserContext.getCurrentUserId();
+        List<Anniversary> list = anniversaryService.getUpcoming(userId, days);
         return Result.success(list);
     }
     
@@ -53,8 +58,9 @@ public class AnniversaryController {
      */
     @PutMapping("/{id}")
     public Result<Anniversary> update(@PathVariable Long id, @RequestBody Anniversary anniversary) {
+        Long userId = UserContext.getCurrentUserId();
         anniversary.setId(id);
-        return anniversaryService.update(anniversary);
+        return anniversaryService.update(userId, anniversary);
     }
     
     /**
@@ -62,6 +68,7 @@ public class AnniversaryController {
      */
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
-        return anniversaryService.delete(id);
+        Long userId = UserContext.getCurrentUserId();
+        return anniversaryService.delete(userId, id);
     }
 }

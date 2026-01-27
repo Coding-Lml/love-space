@@ -27,6 +27,7 @@
     </div>
     
     <van-cell-group inset title="设置">
+      <van-cell title="我的空间" is-link @click="goSpace" />
       <van-cell
         title="聊天"
         is-link
@@ -130,6 +131,10 @@ const fileInput = ref(null)
 
 const goChat = () => {
   router.push({ name: 'chat' })
+}
+
+const goSpace = () => {
+  router.push({ name: 'space' })
 }
 
 // 头像操作

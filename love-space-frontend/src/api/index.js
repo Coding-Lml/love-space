@@ -44,6 +44,7 @@ const api = {
   // 认证相关
   auth: {
     login: (username, password) => http.post('/auth/login', { username, password }),
+    register: (username, password, nickname) => http.post('/auth/register', { username, password, nickname }),
     getMe: () => http.get('/auth/me'),
     getPartner: () => http.get('/auth/partner'),
     updateProfile: (data) => http.put('/auth/me', data),
@@ -69,6 +70,7 @@ const api = {
   // 动态相关
   moments: {
     getList: (pageNum = 1, pageSize = 10) => http.get('/moments', { params: { pageNum, pageSize } }),
+    getPublicList: (pageNum = 1, pageSize = 10) => http.get('/moments/public', { params: { pageNum, pageSize } }),
     getDetail: (id) => http.get(`/moments/${id}`),
     create: (formData) => http.post('/moments', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -118,6 +120,10 @@ const api = {
       }
     }),
     markRead: () => http.post('/chat/read')
+  },
+
+  space: {
+    current: () => http.get('/spaces/current')
   }
 }
 
