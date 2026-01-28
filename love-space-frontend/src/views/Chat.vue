@@ -193,7 +193,14 @@ const onOversize = () => {
 
 const previewImage = url => {
   if (!url) return
-  showImagePreview([url])
+  showImagePreview({
+    images: [url],
+    startPosition: 0,
+    closeable: true,
+    closeOnClickOverlay: true,
+    closeOnClickImage: true,
+    closeOnPopstate: true
+  })
 }
 
 const toggleEmoji = () => {

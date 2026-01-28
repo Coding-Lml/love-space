@@ -16,13 +16,19 @@
       </div>
     </div>
 
+    <div class="guest-help card">
+      <div class="guest-help-title">游客模式说明</div>
+      <div class="guest-help-text">你当前登录的是游客账号。</div>
+      <div class="guest-help-text">可用功能：发布游客动态、查看主人公开动态。</div>
+      <div class="guest-help-text">不可用功能：日记、纪念日、聊天与空间管理（仅主人可用）。</div>
+    </div>
+
     <van-cell-group inset title="账号与安全">
       <van-cell title="修改昵称" is-link @click="openNickname" />
       <van-cell title="修改密码" is-link @click="showPasswordPopup = true" />
     </van-cell-group>
 
     <van-cell-group inset title="帮助">
-      <van-cell title="游客模式说明" is-link @click="showGuestHelp = true" />
       <van-cell title="关于" is-link @click="showAbout = true" />
     </van-cell-group>
 
@@ -47,16 +53,6 @@
         <van-field v-model="passwordForm.newPassword" type="password" placeholder="新密码" />
         <van-field v-model="passwordForm.confirmPassword" type="password" placeholder="确认新密码" />
         <van-button type="primary" block round @click="updatePassword">保存</van-button>
-      </div>
-    </van-popup>
-
-    <van-popup v-model:show="showGuestHelp" position="center" round style="width: 84%; padding: 20px;">
-      <div class="about-content">
-        <div class="about-icon">🧭</div>
-        <h3>游客模式说明</h3>
-        <p>你当前登录的是游客账号。</p>
-        <p>可用功能：发布游客动态、查看主人公开动态。</p>
-        <p>不可用功能：日记、纪念日、聊天与空间管理（仅主人可用）。</p>
       </div>
     </van-popup>
 
@@ -99,7 +95,6 @@ const userStore = useUserStore()
 const showNicknamePopup = ref(false)
 const showPasswordPopup = ref(false)
 const showAbout = ref(false)
-const showGuestHelp = ref(false)
 const showAvatarAction = ref(false)
 
 const newNickname = ref('')
@@ -241,6 +236,25 @@ const logout = async () => {
   font-size: 14px;
   color: var(--text-lighter);
   margin-top: 8px;
+}
+
+.guest-help {
+  padding: 16px;
+  margin: 12px;
+  background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+}
+
+.guest-help-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 8px;
+}
+
+.guest-help-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-light);
 }
 
 .logout-section {

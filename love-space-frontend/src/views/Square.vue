@@ -226,7 +226,14 @@ const onMediaClick = (mediaList, index) => {
   if (!target || target.type !== 'image') return
   const images = mediaList.filter(m => m.type === 'image').map(m => m.url)
   const startPosition = mediaList.slice(0, index).filter(m => m.type === 'image').length
-  showImagePreview({ images, startPosition })
+  showImagePreview({
+    images,
+    startPosition,
+    closeable: true,
+    closeOnClickOverlay: true,
+    closeOnClickImage: true,
+    closeOnPopstate: true
+  })
 }
 
 const goCreate = () => router.push({ name: 'momentCreate' })
