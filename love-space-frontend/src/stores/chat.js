@@ -14,6 +14,7 @@ export const useChatStore = defineStore('chat', () => {
   const reconnecting = ref(false)
   const reconnectInMs = ref(0)
   const lastDisconnectAt = ref(null)
+  const lastClose = ref(null)
 
   let reconnectTimer = null
   let reconnectAttempts = 0
@@ -124,6 +125,11 @@ export const useChatStore = defineStore('chat', () => {
       connecting.value = false
       ws.value = null
       lastDisconnectAt.value = Date.now()
+      lastClose.value = {
+        code: event?.code ?? null,
+        reason: event?.reason ?? null,
+        wasClean: event?.wasClean ?? null
+      }
       if (!manualClose && event?.reason === 'unauthorized') {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
@@ -139,6 +145,11 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     socket.onerror = () => {
+      lastClose.value = {
+        code: 'error',
+        reason: 'socket error',
+        wasClean: false
+      }
       socket.close()
     }
   }
@@ -245,6 +256,7 @@ export const useChatStore = defineStore('chat', () => {
     reconnecting,
     reconnectInMs,
     lastDisconnectAt,
+    lastClose,
     messages,
     loadingHistory,
     hasMore,

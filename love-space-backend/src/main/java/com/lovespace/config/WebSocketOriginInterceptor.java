@@ -54,9 +54,13 @@ public class WebSocketOriginInterceptor implements HandshakeInterceptor {
                 String hostString = host.getHostString();
                 if (originHost != null && hostString != null) {
                     if (originHost.equalsIgnoreCase(hostString)) {
-                        int originPort = normalizePort(originUri.getScheme(), originUri.getPort());
-                        int hostPort = resolveExternalPort(request, host);
-                        if (originPort == hostPort) {
+                        if (isPortCheckSafe(request, originUri, host)) {
+                            int originPort = normalizePort(originUri.getScheme(), originUri.getPort());
+                            int hostPort = resolveExternalPort(request, host);
+                            if (originPort == hostPort) {
+                                return true;
+                            }
+                        } else {
                             return true;
                         }
                     }
@@ -133,5 +137,19 @@ public class WebSocketOriginInterceptor implements HandshakeInterceptor {
                 ? forwardedProto.trim()
                 : (request.getURI() != null ? request.getURI().getScheme() : null);
         return normalizePort(scheme, -1);
+    }
+
+    private static boolean isPortCheckSafe(ServerHttpRequest request, URI originUri, InetSocketAddress host) {
+        if (originUri == null || host == null) {
+            return false;
+        }
+        if (originUri.getPort() >= 0) {
+            return true;
+        }
+        if (host.getPort() > 0) {
+            return true;
+        }
+        String forwardedPort = request.getHeaders().getFirst("X-Forwarded-Port");
+        return StringUtils.hasText(forwardedPort);
     }
 }

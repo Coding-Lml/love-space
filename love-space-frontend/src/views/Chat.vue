@@ -8,7 +8,15 @@
 
     <div class="chat-body">
       <div v-if="!chatStore.connected" class="ws-hint" @click="chatStore.connect">
-        {{ chatStore.connecting ? '连接中...' : (chatStore.reconnecting ? `网络断开，${Math.ceil(chatStore.reconnectInMs / 1000)}s 后重连（点此立即重连）` : '连接已断开，点此重连') }}
+        {{
+          chatStore.connecting
+            ? '连接中...'
+            : (
+              chatStore.reconnecting
+                ? `网络断开，${Math.ceil(chatStore.reconnectInMs / 1000)}s 后重连（点此立即重连）`
+                : `连接已断开，点此重连${chatStore.lastClose?.code ? `（${chatStore.lastClose.code}${chatStore.lastClose.reason ? `:${chatStore.lastClose.reason}` : ''}）` : ''}`
+            )
+        }}
       </div>
       <div class="history-hint" v-if="chatStore.hasMore">
         <van-button size="small" type="primary" plain @click="loadMore" :loading="chatStore.loadingHistory">
