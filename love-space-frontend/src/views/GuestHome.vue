@@ -1,189 +1,286 @@
 <template>
-  <div class="home-page">
+  <div class="profile-page">
     <van-nav-bar title="主页" />
 
-    <div class="intro card" v-if="couple">
-      <div class="couple-avatars">
-        <img :src="couple?.user1?.avatar || '/default-avatar.png'" class="avatar avatar-large" fetchpriority="high" decoding="async" />
-        <span class="heart-icon">❤️</span>
-        <img :src="couple?.user2?.avatar || '/default-avatar.png'" class="avatar avatar-large" fetchpriority="high" decoding="async" />
+    <div class="profile-card card">
+      <div class="avatar-section" @click="showAvatarAction = true">
+        <img :src="userStore.user?.avatar || '/default-avatar.png'" class="avatar avatar-large" loading="lazy" decoding="async" />
+        <div class="edit-hint">点击更换头像</div>
       </div>
-      <div class="couple-names">
-        <span>{{ couple?.user1?.nickname || couple?.user1?.username }}</span>
-        <span class="and">&</span>
-        <span>{{ couple?.user2?.nickname || couple?.user2?.username }}</span>
-      </div>
-      <div class="start-date" v-if="dashboard?.startDate">
-        从 {{ dashboard.startDate }} 开始 💕
-      </div>
-    </div>
-
-    <div class="upcoming-section card" v-if="dashboard?.upcomingAnniversaries?.length">
-      <div class="section-title">
-        <span>📅</span>
-        <span>即将到来</span>
-      </div>
-      <div class="upcoming-list">
-        <div
-          v-for="item in dashboard.upcomingAnniversaries"
-          :key="item.id"
-          class="upcoming-item"
-        >
-          <span class="icon">{{ item.icon || '💕' }}</span>
-          <span class="title">{{ item.title }}</span>
-          <span class="days">{{ item.daysText }}</span>
+      <div class="user-info">
+        <div class="nickname">
+          <span>{{ userStore.user?.nickname }}</span>
+          <van-tag plain type="primary" size="medium">游客</van-tag>
         </div>
+        <div class="username">@{{ userStore.user?.username }}</div>
       </div>
     </div>
 
-    <div class="recent-section card" v-if="dashboard?.recentMoments?.length">
-      <div class="section-title">
-        <span>📝</span>
-        <span>最近公开动态</span>
-      </div>
-      <div class="recent-moments">
-        <div
-          v-for="moment in dashboard.recentMoments.slice(0, 3)"
-          :key="moment.id"
-          class="moment-item"
-        >
-          <img :src="moment.user?.avatar" class="avatar" loading="lazy" decoding="async" />
-          <div class="moment-content">
-            <div class="moment-text">{{ moment.content?.substring(0, 50) }}{{ moment.content?.length > 50 ? '...' : '' }}</div>
-            <div class="time-text">{{ formatTime(moment.createdAt) }}</div>
-          </div>
-        </div>
-      </div>
+    <van-cell-group inset title="账号与安全">
+      <van-cell title="修改昵称" is-link @click="openNickname" />
+      <van-cell title="修改密码" is-link @click="showPasswordPopup = true" />
+    </van-cell-group>
+
+    <van-cell-group inset title="帮助">
+      <van-cell title="游客模式说明" is-link @click="showGuestHelp = true" />
+      <van-cell title="关于" is-link @click="showAbout = true" />
+    </van-cell-group>
+
+    <div class="logout-section">
+      <van-button round block plain type="danger" @click="logout">
+        退出登录
+      </van-button>
     </div>
 
-    <van-empty v-if="!loading && !dashboard" description="暂无内容" />
+    <van-popup v-model:show="showNicknamePopup" position="bottom" round>
+      <div class="popup-content">
+        <div class="popup-header">修改昵称</div>
+        <van-field v-model="newNickname" placeholder="请输入新昵称" maxlength="20" />
+        <van-button type="primary" block round @click="updateNickname">保存</van-button>
+      </div>
+    </van-popup>
+
+    <van-popup v-model:show="showPasswordPopup" position="bottom" round>
+      <div class="popup-content">
+        <div class="popup-header">修改密码</div>
+        <van-field v-model="passwordForm.oldPassword" type="password" placeholder="当前密码" />
+        <van-field v-model="passwordForm.newPassword" type="password" placeholder="新密码" />
+        <van-field v-model="passwordForm.confirmPassword" type="password" placeholder="确认新密码" />
+        <van-button type="primary" block round @click="updatePassword">保存</van-button>
+      </div>
+    </van-popup>
+
+    <van-popup v-model:show="showGuestHelp" position="center" round style="width: 84%; padding: 20px;">
+      <div class="about-content">
+        <div class="about-icon">🧭</div>
+        <h3>游客模式说明</h3>
+        <p>你当前登录的是游客账号。</p>
+        <p>可用功能：发布游客动态、查看主人公开动态。</p>
+        <p>不可用功能：日记、纪念日、聊天与空间管理（仅主人可用）。</p>
+      </div>
+    </van-popup>
+
+    <van-popup v-model:show="showAbout" position="center" round style="width: 80%; padding: 24px;">
+      <div class="about-content">
+        <div class="about-icon">💗</div>
+        <h3>Love Space</h3>
+        <p>轻量记录与分享的小站</p>
+        <p class="version">v1.0.0</p>
+      </div>
+    </van-popup>
+
+    <van-action-sheet
+      v-model:show="showAvatarAction"
+      :actions="avatarActions"
+      cancel-text="取消"
+      @select="onAvatarSelect"
+    />
+
+    <input
+      ref="fileInput"
+      type="file"
+      accept="image/*"
+      style="display: none;"
+      @change="onFileChange"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import dayjs from 'dayjs'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { showToast, showConfirmDialog } from 'vant'
+import { useUserStore } from '../stores/user'
 import api from '../api'
 
-const loading = ref(true)
-const dashboard = ref(null)
-const couple = ref(null)
+const router = useRouter()
+const userStore = useUserStore()
 
-const fetchData = async () => {
-  loading.value = true
-  try {
-    const res = await api.guest.getDashboard()
-    if (res.code === 200) {
-      dashboard.value = res.data?.dashboard || null
-      couple.value = res.data?.couple || null
-    }
-  } catch (e) {
-    console.error('获取游客主页数据失败', e)
-  } finally {
-    loading.value = false
+const showNicknamePopup = ref(false)
+const showPasswordPopup = ref(false)
+const showAbout = ref(false)
+const showGuestHelp = ref(false)
+const showAvatarAction = ref(false)
+
+const newNickname = ref('')
+const passwordForm = ref({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+const avatarActions = [
+  { name: '从相册选择' }
+]
+
+const fileInput = ref(null)
+
+const openNickname = () => {
+  newNickname.value = userStore.user?.nickname || ''
+  showNicknamePopup.value = true
+}
+
+const onAvatarSelect = (action) => {
+  if (action.name === '从相册选择') {
+    fileInput.value?.click()
   }
 }
 
-const formatTime = (time) => {
-  return dayjs(time).format('MM-DD HH:mm')
+const onFileChange = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  try {
+    const res = await api.user.uploadAvatar(file)
+    if (res.code === 200) {
+      userStore.user.avatar = res.data
+      localStorage.setItem('user', JSON.stringify(userStore.user))
+      showToast({ message: '头像更新成功', icon: 'success' })
+    } else {
+      showToast(res.message || '上传失败')
+    }
+  } catch (e) {
+    showToast('上传失败')
+  }
 }
 
-onMounted(() => {
-  fetchData()
-})
+const updateNickname = async () => {
+  if (!newNickname.value.trim()) {
+    showToast('请输入昵称')
+    return
+  }
+
+  const res = await userStore.updateProfile({ nickname: newNickname.value })
+  if (res.code === 200) {
+    showToast({ message: '修改成功', icon: 'success' })
+    showNicknamePopup.value = false
+  } else {
+    showToast(res.message || '修改失败')
+  }
+}
+
+const updatePassword = async () => {
+  if (!passwordForm.value.oldPassword || !passwordForm.value.newPassword) {
+    showToast('请填写完整')
+    return
+  }
+  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+    showToast('两次密码不一致')
+    return
+  }
+
+  try {
+    const res = await api.auth.changePassword(
+      passwordForm.value.oldPassword,
+      passwordForm.value.newPassword
+    )
+    if (res.code === 200) {
+      showToast({ message: '修改成功，请重新登录', icon: 'success' })
+      showPasswordPopup.value = false
+      userStore.logout()
+      router.replace({ name: 'login' })
+    } else {
+      showToast(res.message || '修改失败')
+    }
+  } catch (e) {
+    showToast('修改失败')
+  }
+}
+
+const logout = async () => {
+  try {
+    await showConfirmDialog({
+      title: '确认退出',
+      message: '确定要退出登录吗？'
+    })
+    userStore.logout()
+    router.replace({ name: 'login' })
+  } catch (e) {
+  }
+}
 </script>
 
 <style scoped>
-.home-page {
+.profile-page {
   min-height: 100vh;
   padding-bottom: 70px;
 }
 
-.intro {
-  text-align: center;
-  padding: 24px;
-  margin-top: 12px;
-  background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
-}
-
-.couple-avatars {
+.profile-card {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 20px;
+  padding: 24px;
+  margin: 12px;
 }
 
-.heart-icon {
-  font-size: 28px;
+.avatar-section {
+  text-align: center;
 }
 
-.couple-names {
-  font-size: 18px;
+.edit-hint {
+  font-size: 12px;
+  color: var(--text-lighter);
+  margin-top: 8px;
+}
+
+.user-info {
+  flex: 1;
+}
+
+.nickname {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--text-color);
 }
 
-.couple-names .and {
-  margin: 0 8px;
-  color: var(--primary-color);
-}
-
-.start-date {
-  font-size: 13px;
+.username {
+  font-size: 14px;
   color: var(--text-lighter);
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
-.upcoming-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.logout-section {
+  padding: 20px 16px;
 }
 
-.upcoming-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: var(--bg-color);
-  border-radius: 12px;
+.popup-content {
+  padding: 20px;
 }
 
-.upcoming-item .icon {
-  font-size: 24px;
+.popup-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 16px;
 }
 
-.upcoming-item .title {
-  flex: 1;
-  font-size: 15px;
+.about-content {
+  text-align: center;
   color: var(--text-color);
 }
 
-.upcoming-item .days {
+.about-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.about-content h3 {
+  margin: 0 0 8px;
+}
+
+.about-content p {
+  margin: 6px 0;
   font-size: 14px;
-  color: var(--primary-color);
-  font-weight: 500;
+  color: var(--text-light);
 }
 
-.recent-moments {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.moment-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.moment-content {
-  flex: 1;
-}
-
-.moment-text {
-  font-size: 14px;
-  color: var(--text-color);
+.version {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-lighter);
 }
 </style>
