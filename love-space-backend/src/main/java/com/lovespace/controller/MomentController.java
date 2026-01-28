@@ -116,7 +116,15 @@ public class MomentController {
     public Result<Comment> addComment(@PathVariable Long id, @RequestBody Map<String, String> params) {
         Long userId = UserContext.getCurrentUserId();
         String content = params.get("content");
-        return momentService.addComment(id, userId, content);
+        String replyToCommentIdStr = params.get("replyToCommentId");
+        Long replyToCommentId = null;
+        if (replyToCommentIdStr != null && !replyToCommentIdStr.isBlank()) {
+            try {
+                replyToCommentId = Long.parseLong(replyToCommentIdStr);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return momentService.addComment(id, userId, content, replyToCommentId);
     }
     
     /**

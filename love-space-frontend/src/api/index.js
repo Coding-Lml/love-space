@@ -72,7 +72,10 @@ const api = {
     getMoments: (pageNum = 1, pageSize = 10) => http.get('/guest/moments', { params: { pageNum, pageSize } }),
     publishMoment: (formData) => http.post('/guest/moments', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    }),
+    deleteMoment: (id) => http.delete(`/guest/moments/${id}`),
+    addComment: (id, content, replyToCommentId) => http.post(`/guest/moments/${id}/comments`, { content, replyToCommentId }),
+    deleteComment: (commentId) => http.delete(`/guest/moments/comments/${commentId}`)
   },
   
   // 动态相关
@@ -85,7 +88,7 @@ const api = {
     }),
     delete: (id) => http.delete(`/moments/${id}`),
     like: (id) => http.post(`/moments/${id}/like`),
-    addComment: (id, content) => http.post(`/moments/${id}/comments`, { content }),
+    addComment: (id, content, replyToCommentId) => http.post(`/moments/${id}/comments`, { content, replyToCommentId }),
     deleteComment: (commentId) => http.delete(`/moments/comments/${commentId}`)
   },
   

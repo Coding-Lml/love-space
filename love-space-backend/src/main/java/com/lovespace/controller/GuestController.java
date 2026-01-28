@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lovespace.common.Result;
 import com.lovespace.dto.DashboardData;
 import com.lovespace.dto.GuestDashboardResponse;
+import com.lovespace.entity.Comment;
 import com.lovespace.entity.Moment;
 import com.lovespace.entity.MomentMedia;
 import com.lovespace.entity.User;
@@ -20,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/guest")
@@ -108,5 +110,36 @@ public class GuestController {
         }
 
         return momentService.publishGuestMoment(guestUserId, hostSpaceId, content, location, mediaList);
+    }
+
+    @DeleteMapping("/moments/{id}")
+    public Result<Void> deleteMoment(@PathVariable Long id) {
+        Long userId = UserContext.getCurrentUserId();
+        Long hostSpaceId = hostSpaceService.getHostSpaceId();
+        if (hostSpaceId == null) {
+            return Result.error("主人空间不存在");
+        }
+        return momentService.deleteGuestMoment(id, userId, hostSpaceId);
+    }
+
+    @PostMapping("/moments/{id}/comments")
+    public Result<Comment> addComment(@PathVariable Long id, @RequestBody Map<String, String> params) {
+        Long userId = UserContext.getCurrentUserId();
+        String content = params.get("content");
+        String replyToCommentIdStr = params.get("replyToCommentId");
+        Long replyToCommentId = null;
+        if (replyToCommentIdStr != null && !replyToCommentIdStr.isBlank()) {
+            try {
+                replyToCommentId = Long.parseLong(replyToCommentIdStr);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return momentService.addComment(id, userId, content, replyToCommentId);
+    }
+
+    @DeleteMapping("/moments/comments/{commentId}")
+    public Result<Void> deleteComment(@PathVariable Long commentId) {
+        Long userId = UserContext.getCurrentUserId();
+        return momentService.deleteComment(commentId, userId);
     }
 }

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lovespace.common.Result;
 import com.lovespace.entity.*;
 import com.lovespace.mapper.*;
+import com.lovespace.security.RoleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
     private final FileService fileService;
     private final SpaceService spaceService;
     private final HostSpaceService hostSpaceService;
+    private final RoleService roleService;
 
     private static final String VISIBILITY_SPACE = "SPACE";
     private static final String VISIBILITY_PUBLIC = "PUBLIC";
@@ -155,8 +157,42 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         if (!canAccessMoment(moment, spaceId)) {
             return Result.error(403, "无权限操作");
         }
-        if (!moment.getUserId().equals(userId)) {
-            return Result.error("只能删除自己的动态");
+        if (!roleService.isOwner() && !moment.getUserId().equals(userId)) {
+            return Result.error(403, "无权限操作");
+        }
+
+        List<MomentMedia> mediaList = mediaMapper.selectList(new LambdaQueryWrapper<MomentMedia>()
+                .eq(MomentMedia::getMomentId, momentId));
+        for (MomentMedia media : mediaList) {
+            if (media.getUrl() != null && !media.getUrl().isBlank()) {
+                fileService.deleteFile(media.getUrl());
+            }
+            if (media.getThumbnail() != null && !media.getThumbnail().isBlank()) {
+                fileService.deleteFile(media.getThumbnail());
+            }
+        }
+
+        mediaMapper.delete(new LambdaQueryWrapper<MomentMedia>().eq(MomentMedia::getMomentId, momentId));
+        likeMapper.delete(new LambdaQueryWrapper<MomentLike>().eq(MomentLike::getMomentId, momentId));
+        commentMapper.delete(new LambdaQueryWrapper<Comment>().eq(Comment::getMomentId, momentId));
+        this.removeById(momentId);
+        return Result.success("删除成功", null);
+    }
+
+    @Transactional
+    public Result<Void> deleteGuestMoment(Long momentId, Long userId, Long hostSpaceId) {
+        Moment moment = this.getById(momentId);
+        if (moment == null) {
+            return Result.error("动态不存在");
+        }
+        if (moment.getSpaceId() == null || !moment.getSpaceId().equals(hostSpaceId)) {
+            return Result.error(403, "无权限操作");
+        }
+        if (!VISIBILITY_GUEST.equals(moment.getVisibility())) {
+            return Result.error(403, "无权限操作");
+        }
+        if (!roleService.isOwner() && !moment.getUserId().equals(userId)) {
+            return Result.error(403, "无权限操作");
         }
 
         List<MomentMedia> mediaList = mediaMapper.selectList(new LambdaQueryWrapper<MomentMedia>()
@@ -217,9 +253,9 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
     }
     
     /**
-     * 添加评论
+     * 添加评论/回复评论
      */
-    public Result<Comment> addComment(Long momentId, Long userId, String content) {
+    public Result<Comment> addComment(Long momentId, Long userId, String content, Long replyToCommentId) {
         Moment moment = this.getById(momentId);
         if (moment == null) {
             return Result.error("动态不存在");
@@ -228,15 +264,36 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         if (!canAccessMoment(moment, spaceId)) {
             return Result.error(403, "无权限操作");
         }
+        if (content == null || content.isBlank()) {
+            return Result.error("评论内容不能为空");
+        }
         
         Comment comment = new Comment();
         comment.setMomentId(momentId);
         comment.setUserId(userId);
         comment.setContent(content);
+        if (replyToCommentId != null) {
+            Comment parent = commentMapper.selectById(replyToCommentId);
+            if (parent == null || !momentId.equals(parent.getMomentId())) {
+                return Result.error("回复的评论不存在");
+            }
+            comment.setParentId(replyToCommentId);
+            comment.setReplyToUserId(parent.getUserId());
+        }
         commentMapper.insert(comment);
         
         // 填充用户信息
         comment.setUser(userMapper.selectById(userId));
+        if (comment.getUser() != null) {
+            comment.getUser().setPassword(null);
+        }
+        if (comment.getReplyToUserId() != null) {
+            User replyUser = userMapper.selectById(comment.getReplyToUserId());
+            if (replyUser != null) {
+                replyUser.setPassword(null);
+            }
+            comment.setReplyToUser(replyUser);
+        }
         
         return Result.success("评论成功", comment);
     }
@@ -249,8 +306,19 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         if (comment == null) {
             return Result.error("评论不存在");
         }
-        if (!comment.getUserId().equals(userId)) {
-            return Result.error("只能删除自己的评论");
+        Moment moment = this.getById(comment.getMomentId());
+        if (moment == null) {
+            return Result.error("动态不存在");
+        }
+        Long spaceId = spaceService.getOrCreatePrimarySpaceId(userId);
+        if (!canAccessMoment(moment, spaceId)) {
+            return Result.error(403, "无权限操作");
+        }
+        boolean canDelete = comment.getUserId().equals(userId)
+                || moment.getUserId().equals(userId)
+                || roleService.isOwner();
+        if (!canDelete) {
+            return Result.error(403, "无权限操作");
         }
         
         commentMapper.deleteById(commentId);
@@ -339,12 +407,30 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         List<Comment> comments = commentMapper.selectList(new LambdaQueryWrapper<Comment>()
                 .eq(Comment::getMomentId, moment.getId())
                 .orderByAsc(Comment::getCreatedAt));
+        java.util.Set<Long> replyUserIds = new java.util.HashSet<>();
         for (Comment comment : comments) {
             User commentUser = userMapper.selectById(comment.getUserId());
             if (commentUser != null) {
                 commentUser.setPassword(null);
             }
             comment.setUser(commentUser);
+            if (comment.getReplyToUserId() != null) {
+                replyUserIds.add(comment.getReplyToUserId());
+            }
+        }
+        if (!replyUserIds.isEmpty()) {
+            java.util.Map<Long, User> replyUsers = new java.util.HashMap<>();
+            for (User u : userMapper.selectBatchIds(replyUserIds)) {
+                if (u != null) {
+                    u.setPassword(null);
+                    replyUsers.put(u.getId(), u);
+                }
+            }
+            for (Comment comment : comments) {
+                if (comment.getReplyToUserId() != null) {
+                    comment.setReplyToUser(replyUsers.get(comment.getReplyToUserId()));
+                }
+            }
         }
         moment.setComments(comments);
         

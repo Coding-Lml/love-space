@@ -18,7 +18,7 @@
         <div v-for="moment in moments" :key="moment.id" v-memo="[moment.id, moment.likes, moment.liked, moment.comments?.length]" class="moment-card card">
           <!-- 用户信息 -->
           <div class="moment-header">
-            <img :src="moment.user?.avatar" class="avatar" loading="lazy" decoding="async" />
+            <img :src="normalizeMediaUrl(moment.user?.avatar)" class="avatar" loading="lazy" decoding="async" @error="onAvatarError" />
             <div class="user-info">
               <div class="nickname">{{ moment.user?.nickname }}</div>
               <div class="subline">
@@ -27,7 +27,7 @@
               </div>
             </div>
             <van-icon 
-              v-if="moment.userId === userStore.user?.id"
+              v-if="moment.userId === userStore.user?.id || userStore.isOwner"
               name="ellipsis" 
               @click="showActions(moment)" 
             />
@@ -53,8 +53,14 @@
               class="media-item"
               @click="onMediaClick(moment.mediaList, index)"
             >
-              <img v-if="media.type === 'image'" :src="media.thumbnail || toThumbUrl(media.url)" loading="lazy" decoding="async" />
-              <video v-else :src="media.url" preload="metadata" playsinline />
+              <img
+                v-if="media.type === 'image'"
+                :src="normalizeMediaUrl(media.thumbnail) || toThumbUrl(normalizeMediaUrl(media.url))"
+                loading="lazy"
+                decoding="async"
+                @error="onImageError($event, media.url)"
+              />
+              <video v-else :src="normalizeMediaUrl(media.url)" preload="metadata" playsinline />
             </div>
           </div>
           
@@ -78,8 +84,10 @@
           
           <!-- 评论列表 -->
           <div class="comments-section" v-if="moment.comments?.length">
-            <div v-for="comment in moment.comments" :key="comment.id" class="comment-item">
-              <span class="comment-user">{{ comment.user?.nickname }}：</span>
+            <div v-for="comment in moment.comments" :key="comment.id" class="comment-item" @click="openCommentActions(moment, comment)">
+              <span class="comment-user">
+                {{ comment.user?.nickname }}<template v-if="comment.replyToUser"> 回复 {{ comment.replyToUser?.nickname }}</template>：
+              </span>
               <span class="comment-text">{{ comment.content }}</span>
             </div>
           </div>
@@ -106,9 +114,13 @@
     <!-- 评论输入框 -->
     <van-popup v-model:show="showCommentPopup" position="bottom" round>
       <div class="comment-input-wrapper">
+        <div v-if="replyToComment" class="replying-bar">
+          <span class="replying-text">回复 @{{ replyToComment.user?.nickname }}</span>
+          <van-icon name="cross" @click="clearReply" />
+        </div>
         <van-field
           v-model="commentText"
-          placeholder="写评论..."
+          :placeholder="replyToComment ? `回复 @${replyToComment.user?.nickname}` : '写评论...'"
           autofocus
           @keyup.enter="submitComment"
         >
@@ -118,6 +130,13 @@
         </van-field>
       </div>
     </van-popup>
+
+    <van-action-sheet
+      v-model:show="showCommentActionSheet"
+      :actions="commentActions"
+      cancel-text="取消"
+      @select="onCommentActionSelect"
+    />
   </div>
 </template>
 
@@ -128,7 +147,7 @@ import { showToast, showConfirmDialog, showImagePreview } from 'vant'
 import { useUserStore } from '../stores/user'
 import api from '../api'
 import dayjs from 'dayjs'
-import { toThumbUrl } from '../utils/media'
+import { toThumbUrl, normalizeMediaUrl } from '../utils/media'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -147,6 +166,12 @@ const actions = [
 
 const showCommentPopup = ref(false)
 const commentText = ref('')
+const replyToComment = ref(null)
+
+const showCommentActionSheet = ref(false)
+const currentComment = ref(null)
+const currentCommentMoment = ref(null)
+const commentActions = ref([])
 
 // 加载数据
 const loadMore = async () => {
@@ -231,16 +256,18 @@ const onActionSelect = async (action) => {
 const showCommentInput = (moment) => {
   currentMoment.value = moment
   commentText.value = ''
+  replyToComment.value = null
   showCommentPopup.value = true
 }
 
 const submitComment = async () => {
   if (!commentText.value.trim()) return
   try {
-    const res = await api.moments.addComment(currentMoment.value.id, commentText.value)
+    const res = await api.moments.addComment(currentMoment.value.id, commentText.value, replyToComment.value?.id)
     if (res.code === 200) {
       currentMoment.value.comments.push(res.data)
       showCommentPopup.value = false
+      replyToComment.value = null
       showToast('评论成功')
     }
   } catch (e) {
@@ -248,10 +275,47 @@ const submitComment = async () => {
   }
 }
 
+const clearReply = () => {
+  replyToComment.value = null
+}
+
+const openCommentActions = (moment, comment) => {
+  currentCommentMoment.value = moment
+  currentComment.value = comment
+  const actions = [{ name: '回复' }]
+  const canDelete = userStore.isOwner || moment.userId === userStore.user?.id || comment.userId === userStore.user?.id
+  if (canDelete) {
+    actions.push({ name: '删除', color: '#ee0a24' })
+  }
+  commentActions.value = actions
+  showCommentActionSheet.value = true
+}
+
+const onCommentActionSelect = async (action) => {
+  if (!currentComment.value || !currentCommentMoment.value) return
+  if (action.name === '回复') {
+    currentMoment.value = currentCommentMoment.value
+    commentText.value = ''
+    replyToComment.value = currentComment.value
+    showCommentPopup.value = true
+    return
+  }
+  if (action.name === '删除') {
+    try {
+      const res = await api.moments.deleteComment(currentComment.value.id)
+      if (res.code === 200) {
+        currentCommentMoment.value.comments = currentCommentMoment.value.comments.filter(c => c.id !== currentComment.value.id)
+        showToast('删除成功')
+      }
+    } catch (e) {
+    }
+  }
+}
+
 const onMediaClick = (mediaList, index) => {
   const target = Array.isArray(mediaList) ? mediaList[index] : null
   if (!target || target.type !== 'image') return
-  const images = mediaList.filter(m => m.type === 'image').map(m => m.url)
+  const images = mediaList.filter(m => m.type === 'image').map(m => normalizeMediaUrl(m.url))
   const startPosition = mediaList.slice(0, index).filter(m => m.type === 'image').length
   showImagePreview({
     images,
@@ -261,6 +325,30 @@ const onMediaClick = (mediaList, index) => {
     closeOnClickImage: true,
     closeOnPopstate: true
   })
+}
+
+const onImageError = (e, rawUrl) => {
+  const el = e?.target
+  if (!el) return
+  const step = parseInt(el.dataset.fallbackStep || '0', 10)
+  if (step === 0) {
+    el.dataset.fallbackStep = '1'
+    el.src = normalizeMediaUrl(rawUrl)
+    return
+  }
+  if (step === 1) {
+    el.dataset.fallbackStep = '2'
+    el.src =
+      'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 viewBox%3D%220 0 64 64%22%3E%3Crect width%3D%2264%22 height%3D%2264%22 fill%3D%22%23f2f3f5%22/%3E%3Cpath d%3D%22M16 44l8-10 6 7 9-12 9 15H16z%22 fill%3D%22%23c8c9cc%22/%3E%3Ccircle cx%3D%2223%22 cy%3D%2225%22 r%3D%224%22 fill%3D%22%23c8c9cc%22/%3E%3C/svg%3E'
+  }
+}
+
+const onAvatarError = (e) => {
+  const el = e?.target
+  if (!el || el.dataset.fallbackApplied === '1') return
+  el.dataset.fallbackApplied = '1'
+  el.src =
+    'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 viewBox%3D%220 0 64 64%22%3E%3Crect width%3D%2264%22 height%3D%2264%22 rx%3D%2232%22 fill%3D%22%23f2f3f5%22/%3E%3Ccircle cx%3D%2232%22 cy%3D%2226%22 r%3D%2210%22 fill%3D%22%23c8c9cc%22/%3E%3Cpath d%3D%22M12 52c4-8 12-12 20-12s16 4 20 12%22 stroke%3D%22%23c8c9cc%22 stroke-width%3D%223%22 fill%3D%22none%22/%3E%3C/svg%3E'
 }
 
 // 发布
@@ -378,5 +466,21 @@ const goSquare = () => router.push({ name: 'square' })
 
 :deep(.van-field__button) {
   padding-left: 8px;
+}
+
+.replying-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px 10px;
+  color: var(--text-light);
+  font-size: 13px;
+}
+
+.replying-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 10px;
 }
 </style>

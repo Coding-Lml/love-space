@@ -66,10 +66,14 @@ CREATE TABLE IF NOT EXISTS `comment` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '评论ID',
     `moment_id` BIGINT NOT NULL COMMENT '动态ID',
     `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `parent_id` BIGINT DEFAULT NULL COMMENT '父评论ID（回复）',
+    `reply_to_user_id` BIGINT DEFAULT NULL COMMENT '被回复用户ID',
     `content` VARCHAR(500) NOT NULL COMMENT '评论内容',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `deleted` TINYINT DEFAULT 0 COMMENT '是否删除',
-    INDEX `idx_moment_id` (`moment_id`)
+    INDEX `idx_moment_id` (`moment_id`),
+    INDEX `idx_parent_id` (`parent_id`),
+    INDEX `idx_reply_to_user_id` (`reply_to_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='评论表';
 
 -- 点赞记录表

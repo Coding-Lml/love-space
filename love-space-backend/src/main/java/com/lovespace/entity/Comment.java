@@ -15,6 +15,10 @@ public class Comment {
     
     private Long userId;
     
+    private Long parentId;
+
+    private Long replyToUserId;
+
     private String content;
     
     @TableField(fill = FieldFill.INSERT)
@@ -26,4 +30,7 @@ public class Comment {
     // 非数据库字段
     @TableField(exist = false)
     private User user;
+
+    @TableField(exist = false)
+    private User replyToUser;
 }

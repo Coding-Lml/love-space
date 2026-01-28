@@ -13,7 +13,7 @@
       >
         <div v-for="moment in moments" :key="moment.id" v-memo="[moment.id, moment.likes, moment.liked, moment.comments?.length]" class="moment-card card">
           <div class="moment-header">
-            <img :src="moment.user?.avatar || '/default-avatar.png'" class="avatar" loading="lazy" decoding="async" />
+            <img :src="normalizeMediaUrl(moment.user?.avatar)" class="avatar" loading="lazy" decoding="async" @error="onAvatarError" />
             <div class="user-info">
               <div class="nickname">
                 {{ moment.user?.nickname || moment.user?.username || '游客' }}
@@ -22,6 +22,11 @@
               </div>
               <div class="time-text">{{ formatTime(moment.createdAt) }}</div>
             </div>
+            <van-icon
+              v-if="canShowMomentActions(moment)"
+              name="ellipsis"
+              @click="showMomentActions(moment)"
+            />
           </div>
 
           <div class="moment-content" v-if="moment.content">
@@ -42,8 +47,14 @@
               class="media-item"
               @click="onMediaClick(moment.mediaList, index)"
             >
-              <img v-if="media.type === 'image'" :src="media.thumbnail || toThumbUrl(media.url)" loading="lazy" decoding="async" />
-              <video v-else :src="media.url" preload="metadata" playsinline />
+              <img
+                v-if="media.type === 'image'"
+                :src="normalizeMediaUrl(media.thumbnail) || toThumbUrl(normalizeMediaUrl(media.url))"
+                loading="lazy"
+                decoding="async"
+                @error="onImageError($event, media.url)"
+              />
+              <video v-else :src="normalizeMediaUrl(media.url)" preload="metadata" playsinline />
             </div>
           </div>
 
@@ -64,8 +75,10 @@
           </div>
 
           <div class="comments-section" v-if="moment.comments?.length">
-            <div v-for="comment in moment.comments" :key="comment.id" class="comment-item">
-              <span class="comment-user">{{ comment.user?.nickname || comment.user?.username }}：</span>
+            <div v-for="comment in moment.comments" :key="comment.id" class="comment-item" @click="openCommentActions(moment, comment)">
+              <span class="comment-user">
+                {{ comment.user?.nickname || comment.user?.username }}<template v-if="comment.replyToUser"> 回复 {{ comment.replyToUser?.nickname || comment.replyToUser?.username }}</template>：
+              </span>
               <span class="comment-text">{{ comment.content }}</span>
             </div>
           </div>
@@ -115,9 +128,13 @@
 
     <van-popup v-model:show="showCommentPopup" position="bottom" round>
       <div class="comment-input-wrapper">
+        <div v-if="replyToComment" class="replying-bar">
+          <span class="replying-text">回复 @{{ replyToComment.user?.nickname || replyToComment.user?.username }}</span>
+          <van-icon name="cross" @click="clearReply" />
+        </div>
         <van-field
           v-model="commentText"
-          placeholder="写评论..."
+          :placeholder="replyToComment ? `回复 @${replyToComment.user?.nickname || replyToComment.user?.username}` : '写评论...'"
           autofocus
           @keyup.enter="submitComment"
         >
@@ -127,6 +144,20 @@
         </van-field>
       </div>
     </van-popup>
+
+    <van-action-sheet
+      v-model:show="showMomentActionSheet"
+      :actions="momentActions"
+      cancel-text="取消"
+      @select="onMomentActionSelect"
+    />
+
+    <van-action-sheet
+      v-model:show="showCommentActionSheet"
+      :actions="commentActions"
+      cancel-text="取消"
+      @select="onCommentActionSelect"
+    />
   </div>
 </template>
 
@@ -135,14 +166,16 @@ import { ref, onMounted } from 'vue'
 import { showToast, showLoadingToast, closeToast, showImagePreview } from 'vant'
 import dayjs from 'dayjs'
 import api from '../api'
-import { toThumbUrl } from '../utils/media'
+import { toThumbUrl, normalizeMediaUrl } from '../utils/media'
 import LoveTimer from '../components/LoveTimer.vue'
+import { useUserStore } from '../stores/user'
 
 const loading = ref(false)
 const finished = ref(false)
 const refreshing = ref(false)
 const pageNum = ref(1)
 const moments = ref([])
+const userStore = useUserStore()
 
 const dashboard = ref(null)
 const couple = ref(null)
@@ -158,6 +191,18 @@ const fileList = ref([])
 const showCommentPopup = ref(false)
 const commentText = ref('')
 const currentMoment = ref(null)
+const replyToComment = ref(null)
+
+const showMomentActionSheet = ref(false)
+const currentActionMoment = ref(null)
+const momentActions = [
+  { name: '删除', color: '#ee0a24' }
+]
+
+const showCommentActionSheet = ref(false)
+const currentComment = ref(null)
+const currentCommentMoment = ref(null)
+const commentActions = ref([])
 
 const fetchHeader = async () => {
   try {
@@ -223,21 +268,95 @@ const toggleLike = async (moment) => {
 const showCommentInput = (moment) => {
   currentMoment.value = moment
   commentText.value = ''
+  replyToComment.value = null
   showCommentPopup.value = true
 }
 
 const submitComment = async () => {
   if (!commentText.value.trim()) return
   try {
-    const res = await api.moments.addComment(currentMoment.value.id, commentText.value)
+    const res = await api.guest.addComment(currentMoment.value.id, commentText.value, replyToComment.value?.id)
     if (res.code === 200) {
       currentMoment.value.comments.push(res.data)
       showCommentPopup.value = false
+      replyToComment.value = null
       showToast('评论成功')
     }
   } catch (e) {
     console.error('评论失败', e)
   }
+}
+
+const clearReply = () => {
+  replyToComment.value = null
+}
+
+const openCommentActions = (moment, comment) => {
+  currentCommentMoment.value = moment
+  currentComment.value = comment
+  const actions = [{ name: '回复' }]
+  const canDelete = userStore.isOwner || moment.userId === userStore.user?.id || comment.userId === userStore.user?.id
+  if (canDelete) {
+    actions.push({ name: '删除', color: '#ee0a24' })
+  }
+  commentActions.value = actions
+  showCommentActionSheet.value = true
+}
+
+const onCommentActionSelect = async (action) => {
+  if (!currentComment.value || !currentCommentMoment.value) return
+  if (action.name === '回复') {
+    currentMoment.value = currentCommentMoment.value
+    commentText.value = ''
+    replyToComment.value = currentComment.value
+    showCommentPopup.value = true
+    return
+  }
+  if (action.name === '删除') {
+    try {
+      const res = await api.guest.deleteComment(currentComment.value.id)
+      if (res.code === 200) {
+        currentCommentMoment.value.comments = currentCommentMoment.value.comments.filter(c => c.id !== currentComment.value.id)
+        showToast('删除成功')
+      }
+    } catch (e) {
+    }
+  }
+}
+
+const showMomentActions = (moment) => {
+  currentActionMoment.value = moment
+  showMomentActionSheet.value = true
+}
+
+const onMomentActionSelect = async (action) => {
+  if (!currentActionMoment.value) return
+  if (action.name === '删除') {
+    try {
+      let res
+      if (currentActionMoment.value.visibility === 'GUEST') {
+        res = await api.guest.deleteMoment(currentActionMoment.value.id)
+      } else {
+        res = await api.moments.delete(currentActionMoment.value.id)
+      }
+      if (res.code === 200) {
+        moments.value = moments.value.filter(m => m.id !== currentActionMoment.value.id)
+        showToast('删除成功')
+      }
+    } catch (e) {
+    }
+  }
+}
+
+const canShowMomentActions = (moment) => {
+  if (!moment) return false
+  if (moment.visibility === 'GUEST') {
+    return userStore.isOwner || moment.userId === userStore.user?.id
+  }
+  if (moment.visibility === 'PUBLIC') {
+    return !!userStore.isOwner
+  }
+  return false
 }
 
 const openPublish = () => {
@@ -329,7 +448,7 @@ const submitPublish = async () => {
 const onMediaClick = (mediaList, index) => {
   const target = Array.isArray(mediaList) ? mediaList[index] : null
   if (!target || target.type !== 'image') return
-  const images = mediaList.filter(m => m.type === 'image').map(m => m.url)
+  const images = mediaList.filter(m => m.type === 'image').map(m => normalizeMediaUrl(m.url))
   const startPosition = mediaList.slice(0, index).filter(m => m.type === 'image').length
   showImagePreview({
     images,
@@ -341,10 +460,34 @@ const onMediaClick = (mediaList, index) => {
   })
 }
 
+const onImageError = (e, rawUrl) => {
+  const el = e?.target
+  if (!el) return
+  const step = parseInt(el.dataset.fallbackStep || '0', 10)
+  if (step === 0) {
+    el.dataset.fallbackStep = '1'
+    el.src = normalizeMediaUrl(rawUrl)
+    return
+  }
+  if (step === 1) {
+    el.dataset.fallbackStep = '2'
+    el.src =
+      'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 viewBox%3D%220 0 64 64%22%3E%3Crect width%3D%2264%22 height%3D%2264%22 fill%3D%22%23f2f3f5%22/%3E%3Cpath d%3D%22M16 44l8-10 6 7 9-12 9 15H16z%22 fill%3D%22%23c8c9cc%22/%3E%3Ccircle cx%3D%2223%22 cy%3D%2225%22 r%3D%224%22 fill%3D%22%23c8c9cc%22/%3E%3C/svg%3E'
+  }
+}
+
 onMounted(async () => {
   await fetchHeader()
   await onRefresh()
 })
+
+const onAvatarError = (e) => {
+  const el = e?.target
+  if (!el || el.dataset.fallbackApplied === '1') return
+  el.dataset.fallbackApplied = '1'
+  el.src =
+    'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 viewBox%3D%220 0 64 64%22%3E%3Crect width%3D%2264%22 height%3D%2264%22 rx%3D%2232%22 fill%3D%22%23f2f3f5%22/%3E%3Ccircle cx%3D%2232%22 cy%3D%2226%22 r%3D%2210%22 fill%3D%22%23c8c9cc%22/%3E%3Cpath d%3D%22M12 52c4-8 12-12 20-12s16 4 20 12%22 stroke%3D%22%23c8c9cc%22 stroke-width%3D%223%22 fill%3D%22none%22/%3E%3C/svg%3E'
+}
 </script>
 
 <style scoped>
@@ -479,6 +622,22 @@ onMounted(async () => {
 
 .comment-input-wrapper {
   padding: 12px;
+}
+
+.replying-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px 10px;
+  color: var(--text-light);
+  font-size: 13px;
+}
+
+.replying-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 10px;
 }
 
 :deep(.van-field__button) {
