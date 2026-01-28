@@ -9,6 +9,7 @@ import com.lovespace.mapper.SpaceMapper;
 import com.lovespace.mapper.SpaceMemberMapper;
 import com.lovespace.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,9 +22,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SpaceService {
 
-    private static final String DEFAULT_SPACE_NAME = "我们的空间";
-    private static final String DEFAULT_OWNER_USERNAME = "limenglong";
-    private static final String DEFAULT_MEMBER_USERNAME = "zengfanrui";
+    @Value("${couple.space-name:我们的空间}")
+    private String defaultSpaceName;
+
+    @Value("${couple.user1.username:limenglong}")
+    private String ownerUsername1;
+
+    @Value("${couple.user2.username:zengfanrui}")
+    private String ownerUsername2;
 
     private final SpaceMapper spaceMapper;
     private final SpaceMemberMapper spaceMemberMapper;
@@ -37,6 +43,7 @@ public class SpaceService {
 
         SpaceMember existing = spaceMemberMapper.selectOne(new LambdaQueryWrapper<SpaceMember>()
                 .eq(SpaceMember::getUserId, userId)
+                .orderByAsc(SpaceMember::getId)
                 .last("LIMIT 1"));
         if (existing != null) {
             return existing.getSpaceId();
@@ -45,14 +52,14 @@ public class SpaceService {
         User current = userMapper.selectById(userId);
         String username = current == null ? null : current.getUsername();
 
-        if (DEFAULT_OWNER_USERNAME.equals(username) || DEFAULT_MEMBER_USERNAME.equals(username)) {
+        if (ownerUsername1.equals(username) || ownerUsername2.equals(username)) {
             Space space = spaceMapper.selectOne(new LambdaQueryWrapper<Space>()
-                    .eq(Space::getName, DEFAULT_SPACE_NAME)
+                    .eq(Space::getName, defaultSpaceName)
                     .orderByAsc(Space::getId)
                     .last("LIMIT 1"));
             if (space == null) {
                 space = new Space();
-                space.setName(DEFAULT_SPACE_NAME);
+                space.setName(defaultSpaceName);
                 spaceMapper.insert(space);
             }
             ensureDefaultCoupleMembers(space.getId());
@@ -142,8 +149,8 @@ public class SpaceService {
         if (spaceId == null) {
             return;
         }
-        ensureMember(spaceId, DEFAULT_OWNER_USERNAME, "OWNER");
-        ensureMember(spaceId, DEFAULT_MEMBER_USERNAME, "MEMBER");
+        ensureMember(spaceId, ownerUsername1, "OWNER");
+        ensureMember(spaceId, ownerUsername2, "MEMBER");
     }
 
     private void ensureMember(Long spaceId, String username, String role) {
