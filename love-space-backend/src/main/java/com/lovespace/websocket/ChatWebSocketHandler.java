@@ -16,8 +16,6 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
@@ -37,29 +35,41 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        Long userId = authenticate(session);
-        if (userId == null) {
-            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("unauthorized"));
-            return;
-        }
-
-        userSessions
-                .computeIfAbsent(userId, k -> ConcurrentHashMap.newKeySet())
-                .add(session);
-
-        log.info("WebSocket connected, userId={}, sessionId={}", userId, session.getId());
+        log.info("WebSocket connected, sessionId={}", session.getId());
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         Long fromUserId = (Long) session.getAttributes().get("userId");
+        JsonNode node = objectMapper.readTree(message.getPayload());
+        String type = node.path("type").asText();
+
         if (fromUserId == null) {
-            session.close(CloseStatus.NOT_ACCEPTABLE.withReason("unauthorized"));
+            if (!"auth".equals(type)) {
+                session.close(CloseStatus.NOT_ACCEPTABLE.withReason("unauthorized"));
+                return;
+            }
+
+            String token = node.path("token").asText(null);
+            Long authedUserId = authenticateToken(token);
+            if (authedUserId == null) {
+                session.close(CloseStatus.NOT_ACCEPTABLE.withReason("unauthorized"));
+                return;
+            }
+
+            session.getAttributes().put("userId", authedUserId);
+            userSessions
+                    .computeIfAbsent(authedUserId, k -> ConcurrentHashMap.newKeySet())
+                    .add(session);
+
+            ObjectNode payload = objectMapper.createObjectNode();
+            payload.put("event", "auth");
+            payload.put("status", "ok");
+            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
+            log.info("WebSocket authed, userId={}, sessionId={}", authedUserId, session.getId());
             return;
         }
 
-        JsonNode node = objectMapper.readTree(message.getPayload());
-        String type = node.path("type").asText();
         String content = node.path("content").asText(null);
         String mediaUrl = node.path("mediaUrl").asText(null);
         String extra = node.path("extra").isMissingNode() || node.path("extra").isNull()
@@ -117,40 +127,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         log.info("WebSocket closed, userId={}, sessionId={}, reason={}", userId, session.getId(), status);
     }
 
-    private Long authenticate(WebSocketSession session) {
-        URI uri = session.getUri();
-        if (uri == null) {
-            return null;
-        }
-
-        String query = uri.getQuery();
-        String token = null;
-        if (query != null) {
-            for (String part : query.split("&")) {
-                String[] kv = part.split("=", 2);
-                if (kv.length == 2 && "token".equals(kv[0])) {
-                    token = kv[1];
-                    break;
-                }
-            }
-        }
-
+    private Long authenticateToken(String token) {
         if (token == null || token.isBlank()) {
             return null;
         }
-
-        try {
-            token = java.net.URLDecoder.decode(token, StandardCharsets.UTF_8);
-        } catch (Exception ignored) {
-        }
-
         if (!jwtUtil.validateToken(token)) {
             return null;
         }
-
-        Long userId = jwtUtil.getUserIdFromToken(token);
-        session.getAttributes().put("userId", userId);
-        return userId;
+        return jwtUtil.getUserIdFromToken(token);
     }
 
     private void broadcastToUser(Long userId, ObjectNode payload) throws IOException {

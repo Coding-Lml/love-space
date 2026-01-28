@@ -11,7 +11,9 @@ import com.lovespace.mapper.UserMapper;
 import com.lovespace.util.JwtUtil;
 import com.lovespace.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +22,12 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     private final JwtUtil jwtUtil;
     private final PasswordUtil passwordUtil;
     private final SpaceService spaceService;
+
+    @Value("${couple.user1.username:}")
+    private String ownerUsername1;
+
+    @Value("${couple.user2.username:}")
+    private String ownerUsername2;
     
     /**
      * 用户登录
@@ -40,8 +48,8 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         
         // 生成 Token
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
-        
-        return Result.success("登录成功", new LoginResponse(token, user));
+
+        return Result.success("登录成功", new LoginResponse(token, user, isOwnerUsername(user.getUsername())));
     }
 
     public Result<LoginResponse> register(RegisterRequest request) {
@@ -67,7 +75,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
 
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
         user.setPassword(null);
-        return Result.success("注册成功", new LoginResponse(token, user));
+        return Result.success("注册成功", new LoginResponse(token, user, isOwnerUsername(user.getUsername())));
     }
     
     /**
@@ -133,5 +141,13 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             partner.setPassword(null);
         }
         return Result.success(partner);
+    }
+
+    private boolean isOwnerUsername(String username) {
+        if (!StringUtils.hasText(username)) {
+            return false;
+        }
+        String normalized = username.trim();
+        return normalized.equals(ownerUsername1) || normalized.equals(ownerUsername2);
     }
 }

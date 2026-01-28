@@ -7,42 +7,62 @@ import com.lovespace.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Component
+@Profile("dev")
+@ConditionalOnProperty(prefix = "app.dev.seed", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
     
     private final UserMapper userMapper;
     private final PasswordUtil passwordUtil;
+
+    @Value("${app.dev.seed.password:love520}")
+    private String seedPassword;
+
+    @Value("${couple.user1.username:}")
+    private String ownerUsername1;
+
+    @Value("${couple.user1.nickname:}")
+    private String ownerNickname1;
+
+    @Value("${couple.user2.username:}")
+    private String ownerUsername2;
+
+    @Value("${couple.user2.nickname:}")
+    private String ownerNickname2;
     
     @Override
     public void run(String... args) {
-        // 检查是否需要初始化用户密码
-        User user = userMapper.selectOne(new LambdaQueryWrapper<User>()
-                .eq(User::getUsername, "limenglong"));
-        
-        if (user != null && user.getPassword().startsWith("$2a$")) {
-            // 密码已经是 BCrypt 格式，无需处理
-            log.info("用户密码已初始化");
+        createUserIfAbsent(ownerUsername1, ownerNickname1);
+        createUserIfAbsent(ownerUsername2, ownerNickname2);
+    }
+
+    private void createUserIfAbsent(String username, String nickname) {
+        if (!StringUtils.hasText(username)) {
             return;
         }
-        
-        // 更新所有用户密码为 BCrypt 格式
-        // 默认密码: love520
-        String encodedPassword = passwordUtil.encode("love520");
-        
-        userMapper.selectList(null).forEach(u -> {
-            u.setPassword(encodedPassword);
-            userMapper.updateById(u);
-            log.info("用户 {} 密码已更新", u.getUsername());
-        });
-        
-        log.info("=================================");
-        log.info("用户密码初始化完成！");
-        log.info("默认密码: love520");
-        log.info("请登录后及时修改密码");
-        log.info("=================================");
+        String normalizedUsername = username.trim();
+
+        User exist = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                .eq(User::getUsername, normalizedUsername)
+                .last("LIMIT 1"));
+        if (exist != null) {
+            return;
+        }
+
+        User user = new User();
+        user.setUsername(normalizedUsername);
+        user.setPassword(passwordUtil.encode(seedPassword));
+        user.setNickname(StringUtils.hasText(nickname) ? nickname.trim() : normalizedUsername);
+        user.setAvatar("/uploads/images/default-avatar-boy.png");
+        userMapper.insert(user);
+        log.info("已创建示例用户：{}", normalizedUsername);
     }
 }

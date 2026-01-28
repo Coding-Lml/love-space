@@ -34,7 +34,7 @@ mybatis-plus:
 
 # JWT 配置
 jwt:
-  secret: ${JWT_SECRET:}
+  secret: ${JWT_SECRET:love-space-dev-secret-change-me-please-32bytes}
   expiration: 604800000  # 7天
 
 # 文件上传路径

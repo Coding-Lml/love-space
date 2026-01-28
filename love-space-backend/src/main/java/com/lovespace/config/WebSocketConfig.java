@@ -2,6 +2,7 @@ package com.lovespace.config;
 
 import com.lovespace.websocket.ChatWebSocketHandler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -14,9 +15,12 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private final ChatWebSocketHandler chatWebSocketHandler;
 
+    @Value("${ws.allowed-origin-patterns:${cors.allowed-origin-patterns:}}")
+    private String allowedOriginPatterns;
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(chatWebSocketHandler, "/ws/chat")
-                .setAllowedOriginPatterns("*");
+                .addInterceptors(new WebSocketOriginInterceptor(allowedOriginPatterns));
     }
 }

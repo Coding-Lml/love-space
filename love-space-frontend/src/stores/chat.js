@@ -86,21 +86,31 @@ export const useChatStore = defineStore('chat', () => {
     connecting.value = true
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${protocol}//${window.location.host}/ws/chat?token=${encodeURIComponent(token)}`
+    const url = `${protocol}//${window.location.host}/ws/chat`
     const socket = new WebSocket(url)
 
     socket.onopen = () => {
       ws.value = socket
-      connected.value = true
-      connecting.value = false
-      reconnecting.value = false
-      reconnectAttempts = 0
+      try {
+        socket.send(JSON.stringify({ type: 'auth', token }))
+      } catch (e) {
+        socket.close()
+      }
     }
 
     socket.onmessage = event => {
       try {
         const payload = JSON.parse(event.data)
-        if (payload.event === 'read') {
+        if (payload.event === 'auth') {
+          if (payload.status === 'ok') {
+            connected.value = true
+            connecting.value = false
+            reconnecting.value = false
+            reconnectAttempts = 0
+          } else {
+            socket.close()
+          }
+        } else if (payload.event === 'read') {
           handleReadEvent(payload)
         } else {
           appendMessage(payload)
@@ -109,11 +119,17 @@ export const useChatStore = defineStore('chat', () => {
       }
     }
 
-    socket.onclose = () => {
+    socket.onclose = event => {
       connected.value = false
       connecting.value = false
       ws.value = null
       lastDisconnectAt.value = Date.now()
+      if (!manualClose && event?.reason === 'unauthorized') {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+        return
+      }
       if (!manualClose) {
         scheduleReconnect()
       } else {
@@ -139,7 +155,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   const sendMessage = payload => {
-    if (!ws.value || ws.value.readyState !== WebSocket.OPEN) return
+    if (!connected.value || !ws.value || ws.value.readyState !== WebSocket.OPEN) return
     ws.value.send(JSON.stringify(payload))
   }
 
