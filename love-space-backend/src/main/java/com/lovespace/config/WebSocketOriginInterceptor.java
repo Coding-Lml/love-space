@@ -9,6 +9,7 @@ import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.net.URI;
+import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -49,11 +50,17 @@ public class WebSocketOriginInterceptor implements HandshakeInterceptor {
         if (host != null) {
             try {
                 URI originUri = URI.create(origin);
-                if (originUri.getHost() != null && originUri.getHost().equalsIgnoreCase(host.getHostString())) {
-                    int originPort = normalizePort(originUri.getScheme(), originUri.getPort());
-                    String requestScheme = request.getURI() != null ? request.getURI().getScheme() : null;
-                    int hostPort = normalizePort(requestScheme, host.getPort());
-                    if (originPort == hostPort) {
+                String originHost = originUri.getHost();
+                String hostString = host.getHostString();
+                if (originHost != null && hostString != null) {
+                    if (originHost.equalsIgnoreCase(hostString)) {
+                        int originPort = normalizePort(originUri.getScheme(), originUri.getPort());
+                        int hostPort = resolveExternalPort(request, host);
+                        if (originPort == hostPort) {
+                            return true;
+                        }
+                    }
+                    if (isLocalHost(hostString) && isLocalHost(originHost)) {
                         return true;
                     }
                 }
@@ -95,5 +102,36 @@ public class WebSocketOriginInterceptor implements HandshakeInterceptor {
             return 80;
         }
         return -1;
+    }
+
+    private static boolean isLocalHost(String host) {
+        if (!StringUtils.hasText(host)) {
+            return false;
+        }
+        String h = host.trim().toLowerCase();
+        return "localhost".equals(h) || "127.0.0.1".equals(h) || "0.0.0.0".equals(h);
+    }
+
+    private static int resolveExternalPort(ServerHttpRequest request, InetSocketAddress host) {
+        if (host.getPort() > 0) {
+            return host.getPort();
+        }
+
+        String forwardedPort = request.getHeaders().getFirst("X-Forwarded-Port");
+        if (StringUtils.hasText(forwardedPort)) {
+            try {
+                int p = Integer.parseInt(forwardedPort.trim());
+                if (p > 0) {
+                    return p;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        String forwardedProto = request.getHeaders().getFirst("X-Forwarded-Proto");
+        String scheme = StringUtils.hasText(forwardedProto)
+                ? forwardedProto.trim()
+                : (request.getURI() != null ? request.getURI().getScheme() : null);
+        return normalizePort(scheme, -1);
     }
 }
