@@ -222,9 +222,12 @@ const fetchHeader = async () => {
     if (res.code === 200) {
       dashboard.value = res.data?.dashboard || null
       couple.value = res.data?.couple || null
+    } else {
+      showToast(res.message || '加载失败')
     }
   } catch (e) {
     console.error('获取游客头部数据失败', e)
+    showToast('加载失败，请稍后重试')
   }
 }
 
@@ -241,9 +244,12 @@ const loadMore = async () => {
       }
       finished.value = res.data.records.length < 10
       pageNum.value++
+    } else {
+      showToast(res.message || '加载失败')
     }
   } catch (e) {
     console.error('加载失败', e)
+    showToast('加载失败，请稍后重试')
   } finally {
     loading.value = false
   }

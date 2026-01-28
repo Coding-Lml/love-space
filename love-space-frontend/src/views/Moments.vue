@@ -199,9 +199,12 @@ const loadMore = async () => {
       }
       finished.value = res.data.records.length < 10
       pageNum.value++
+    } else {
+      showToast(res.message || '加载失败')
     }
   } catch (e) {
     console.error('加载失败', e)
+    showToast('加载失败，请稍后重试')
   } finally {
     loading.value = false
   }

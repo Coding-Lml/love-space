@@ -40,7 +40,7 @@ public class GuestController {
         Long viewerUserId = UserContext.getCurrentUserId();
         Long hostUserId = hostSpaceService.getHostUserId();
         if (hostUserId == null) {
-            return Result.error("主人未配置或不存在");
+            hostUserId = viewerUserId;
         }
 
         DashboardData dashboard = dashboardService.getHostDashboardData(hostUserId, viewerUserId);
@@ -74,7 +74,10 @@ public class GuestController {
         Long viewerUserId = UserContext.getCurrentUserId();
         Long hostSpaceId = hostSpaceService.getHostSpaceId();
         if (hostSpaceId == null) {
-            return Result.error("主人空间不存在");
+            hostSpaceId = spaceService.getOrCreatePrimarySpaceId(viewerUserId);
+            if (hostSpaceId == null) {
+                return Result.error("空间不存在");
+            }
         }
         return momentService.getGuestWall(hostSpaceId, viewerUserId, pageNum, pageSize);
     }
@@ -86,7 +89,10 @@ public class GuestController {
         Long guestUserId = UserContext.getCurrentUserId();
         Long hostSpaceId = hostSpaceService.getHostSpaceId();
         if (hostSpaceId == null) {
-            return Result.error("主人空间不存在");
+            hostSpaceId = spaceService.getOrCreatePrimarySpaceId(guestUserId);
+            if (hostSpaceId == null) {
+                return Result.error("空间不存在");
+            }
         }
 
         List<MomentMedia> mediaList = new ArrayList<>();
@@ -117,7 +123,10 @@ public class GuestController {
         Long userId = UserContext.getCurrentUserId();
         Long hostSpaceId = hostSpaceService.getHostSpaceId();
         if (hostSpaceId == null) {
-            return Result.error("主人空间不存在");
+            hostSpaceId = spaceService.getOrCreatePrimarySpaceId(userId);
+            if (hostSpaceId == null) {
+                return Result.error("空间不存在");
+            }
         }
         return momentService.deleteGuestMoment(id, userId, hostSpaceId);
     }

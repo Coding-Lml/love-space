@@ -36,6 +36,11 @@ public class HostSpaceService {
             if (host == null) {
                 host = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, ownerUsername2));
             }
+            if (host == null) {
+                host = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                        .orderByAsc(User::getId)
+                        .last("LIMIT 1"));
+            }
             hostUserId = host == null ? null : host.getId();
             return hostUserId;
         }
@@ -59,4 +64,3 @@ public class HostSpaceService {
         }
     }
 }
-
