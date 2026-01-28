@@ -18,7 +18,7 @@
         <div v-for="moment in moments" :key="moment.id" v-memo="[moment.id, moment.likes, moment.liked, moment.comments?.length]" class="moment-card card">
           <!-- 用户信息 -->
           <div class="moment-header">
-            <img :src="normalizeMediaUrl(moment.user?.avatar)" class="avatar" loading="lazy" decoding="async" @error="onAvatarError" />
+            <img :src="moment.user?.avatar" class="avatar" loading="lazy" decoding="async" />
             <div class="user-info">
               <div class="nickname">{{ moment.user?.nickname }}</div>
               <div class="subline">
@@ -329,26 +329,9 @@ const onMediaClick = (mediaList, index) => {
 
 const onImageError = (e, rawUrl) => {
   const el = e?.target
-  if (!el) return
-  const step = parseInt(el.dataset.fallbackStep || '0', 10)
-  if (step === 0) {
-    el.dataset.fallbackStep = '1'
-    el.src = normalizeMediaUrl(rawUrl)
-    return
-  }
-  if (step === 1) {
-    el.dataset.fallbackStep = '2'
-    el.src =
-      'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 viewBox%3D%220 0 64 64%22%3E%3Crect width%3D%2264%22 height%3D%2264%22 fill%3D%22%23f2f3f5%22/%3E%3Cpath d%3D%22M16 44l8-10 6 7 9-12 9 15H16z%22 fill%3D%22%23c8c9cc%22/%3E%3Ccircle cx%3D%2223%22 cy%3D%2225%22 r%3D%224%22 fill%3D%22%23c8c9cc%22/%3E%3C/svg%3E'
-  }
-}
-
-const onAvatarError = (e) => {
-  const el = e?.target
   if (!el || el.dataset.fallbackApplied === '1') return
   el.dataset.fallbackApplied = '1'
-  el.src =
-    'data:image/svg+xml;charset=UTF-8,%3Csvg xmlns%3D%22http%3A//www.w3.org/2000/svg%22 viewBox%3D%220 0 64 64%22%3E%3Crect width%3D%2264%22 height%3D%2264%22 rx%3D%2232%22 fill%3D%22%23f2f3f5%22/%3E%3Ccircle cx%3D%2232%22 cy%3D%2226%22 r%3D%2210%22 fill%3D%22%23c8c9cc%22/%3E%3Cpath d%3D%22M12 52c4-8 12-12 20-12s16 4 20 12%22 stroke%3D%22%23c8c9cc%22 stroke-width%3D%223%22 fill%3D%22none%22/%3E%3C/svg%3E'
+  el.src = normalizeMediaUrl(rawUrl)
 }
 
 // 发布
