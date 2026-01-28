@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
 
 @Service
@@ -267,11 +268,28 @@ public class MomentService extends ServiceImpl<MomentMapper, Moment> {
         if (content == null || content.isBlank()) {
             return Result.error("评论内容不能为空");
         }
+        String trimmed = content.trim();
+
+        LambdaQueryWrapper<Comment> duplicateWrapper = new LambdaQueryWrapper<Comment>()
+                .eq(Comment::getMomentId, momentId)
+                .eq(Comment::getUserId, userId)
+                .eq(Comment::getContent, trimmed)
+                .eq(replyToCommentId != null, Comment::getParentId, replyToCommentId)
+                .isNull(replyToCommentId == null, Comment::getParentId)
+                .orderByDesc(Comment::getCreatedAt)
+                .last("LIMIT 1");
+        Comment latestSame = commentMapper.selectOne(duplicateWrapper);
+        if (latestSame != null && latestSame.getCreatedAt() != null) {
+            long seconds = Duration.between(latestSame.getCreatedAt(), java.time.LocalDateTime.now()).getSeconds();
+            if (seconds >= 0 && seconds < 3) {
+                return Result.error(400, "请勿重复发送");
+            }
+        }
         
         Comment comment = new Comment();
         comment.setMomentId(momentId);
         comment.setUserId(userId);
-        comment.setContent(content);
+        comment.setContent(trimmed);
         if (replyToCommentId != null) {
             Comment parent = commentMapper.selectById(replyToCommentId);
             if (parent == null || !momentId.equals(parent.getMomentId())) {

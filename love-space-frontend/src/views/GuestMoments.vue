@@ -139,7 +139,7 @@
           @keyup.enter="submitComment"
         >
           <template #button>
-            <van-button size="small" type="primary" @click="submitComment">发送</van-button>
+            <van-button size="small" type="primary" :loading="commentSubmitting" :disabled="commentSubmitting" @click="submitComment">发送</van-button>
           </template>
         </van-field>
       </div>
@@ -192,6 +192,7 @@ const showCommentPopup = ref(false)
 const commentText = ref('')
 const currentMoment = ref(null)
 const replyToComment = ref(null)
+const commentSubmitting = ref(false)
 
 const showMomentActionSheet = ref(false)
 const currentActionMoment = ref(null)
@@ -203,6 +204,17 @@ const showCommentActionSheet = ref(false)
 const currentComment = ref(null)
 const currentCommentMoment = ref(null)
 const commentActions = ref([])
+
+const mergeUniqueById = (existing, incoming) => {
+  const map = new Map()
+  for (const item of existing || []) {
+    if (item && item.id != null) map.set(item.id, item)
+  }
+  for (const item of incoming || []) {
+    if (item && item.id != null) map.set(item.id, item)
+  }
+  return Array.from(map.values())
+}
 
 const fetchHeader = async () => {
   try {
@@ -217,13 +229,15 @@ const fetchHeader = async () => {
 }
 
 const loadMore = async () => {
+  if (loading.value) return
+  loading.value = true
   try {
     const res = await api.guest.getMoments(pageNum.value)
     if (res.code === 200) {
       if (pageNum.value === 1) {
         moments.value = res.data.records
       } else {
-        moments.value.push(...res.data.records)
+        moments.value = mergeUniqueById(moments.value, res.data.records)
       }
       finished.value = res.data.records.length < 10
       pageNum.value++
@@ -273,7 +287,9 @@ const showCommentInput = (moment) => {
 }
 
 const submitComment = async () => {
+  if (commentSubmitting.value) return
   if (!commentText.value.trim()) return
+  commentSubmitting.value = true
   try {
     const res = await api.guest.addComment(currentMoment.value.id, commentText.value, replyToComment.value?.id)
     if (res.code === 200) {
@@ -284,6 +300,8 @@ const submitComment = async () => {
     }
   } catch (e) {
     console.error('评论失败', e)
+  } finally {
+    commentSubmitting.value = false
   }
 }
 
