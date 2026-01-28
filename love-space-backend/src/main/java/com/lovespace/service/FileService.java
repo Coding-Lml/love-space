@@ -49,9 +49,11 @@ public class FileService {
             "audio/mp3",
             "audio/aac",
             "audio/ogg",
+            "audio/mp4",
             "audio/webm",
             "audio/wav",
-            "audio/x-m4a"
+            "audio/x-m4a",
+            "audio/m4a"
     );
 
     private static final long IMAGE_OPTIMIZE_MIN_BYTES = 400 * 1024;
@@ -65,7 +67,7 @@ public class FileService {
             return Result.error("文件不能为空");
         }
         
-        String contentType = file.getContentType();
+        String contentType = normalizeContentType(file.getContentType());
         String subDir;
         
         if (IMAGE_TYPES.contains(contentType)) {
@@ -92,6 +94,15 @@ public class FileService {
             log.error("文件上传失败", e);
             return Result.error("文件上传失败：" + e.getMessage());
         }
+    }
+
+    private String normalizeContentType(String value) {
+        if (value == null) {
+            return null;
+        }
+        int semi = value.indexOf(';');
+        String base = semi >= 0 ? value.substring(0, semi) : value;
+        return base.trim().toLowerCase();
     }
     
     /**

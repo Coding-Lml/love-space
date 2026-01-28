@@ -27,7 +27,7 @@
               <span>{{ msg.content }}</span>
             </template>
             <template v-else-if="msg.type === 'image'">
-              <img :src="toThumbUrl(msg.mediaUrl)" class="msg-image" loading="lazy" decoding="async" @click="previewImage(msg.mediaUrl)" />
+              <img :src="toThumbUrl(normalizeMediaUrl(msg.mediaUrl))" class="msg-image" loading="lazy" decoding="async" @click="previewImage(normalizeMediaUrl(msg.mediaUrl))" />
             </template>
             <template v-else-if="msg.type === 'audio'">
               <div class="audio-bubble" @click="playAudio(msg.mediaUrl)">
@@ -112,7 +112,7 @@ import { showImagePreview, showToast } from 'vant'
 import { useUserStore } from '../stores/user'
 import { useChatStore } from '../stores/chat'
 import api from '../api'
-import { toThumbUrl } from '../utils/media'
+import { toThumbUrl, normalizeMediaUrl } from '../utils/media'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -167,6 +167,10 @@ const scrollToBottom = () => {
 const sendText = () => {
   const text = inputValue.value.trim()
   if (!text) return
+  if (!chatStore.connected) {
+    showToast('聊天未连接，发送失败')
+    return
+  }
   chatStore.sendText(text)
   inputValue.value = ''
   scrollToBottom()
@@ -177,6 +181,10 @@ const afterReadImage = async file => {
   try {
     const res = await api.file.upload(raw)
     if (res.code === 200) {
+      if (!chatStore.connected) {
+        showToast('聊天未连接，发送失败')
+        return
+      }
       chatStore.sendMedia('image', res.data)
       scrollToBottom()
     } else {
@@ -211,10 +219,46 @@ const appendEmoji = e => {
   inputValue.value += e
 }
 
+const getSupportedAudioMimeType = () => {
+  if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
+    return ''
+  }
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/aac',
+    'audio/ogg;codecs=opus',
+    'audio/ogg'
+  ]
+  for (const t of candidates) {
+    if (MediaRecorder.isTypeSupported(t)) {
+      return t
+    }
+  }
+  return ''
+}
+
+const extFromMimeType = (mimeType) => {
+  const base = (mimeType || '').split(';')[0].trim().toLowerCase()
+  if (base === 'audio/webm') return 'webm'
+  if (base === 'audio/ogg') return 'ogg'
+  if (base === 'audio/aac') return 'aac'
+  if (base === 'audio/mp4') return 'm4a'
+  if (base === 'audio/wav') return 'wav'
+  if (base === 'audio/mpeg' || base === 'audio/mp3') return 'mp3'
+  return 'webm'
+}
+
 const playAudio = url => {
   if (!url) return
-  const audio = new Audio(url)
-  audio.play()
+  const audio = new Audio(normalizeMediaUrl(url))
+  const playPromise = audio.play()
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch(() => {
+      showToast('语音无法播放，可能是格式不支持或链接失效')
+    })
+  }
 }
 
 const startRecord = async () => {
@@ -227,7 +271,8 @@ const startRecord = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     audioStream.value = stream
     recordedChunks.value = []
-    const mr = new MediaRecorder(stream)
+    const mimeType = getSupportedAudioMimeType()
+    const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
     mediaRecorder.value = mr
     mr.ondataavailable = e => {
       if (e.data && e.data.size > 0) {
@@ -240,11 +285,17 @@ const startRecord = async () => {
         audioStream.value = null
       }
       if (!recordedChunks.value.length) return
-      const blob = new Blob(recordedChunks.value, { type: 'audio/webm' })
-      const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type })
+      const blobType = (mr.mimeType || recordedChunks.value[0]?.type || 'audio/webm').split(';')[0].trim()
+      const blob = new Blob(recordedChunks.value, { type: blobType })
+      const ext = extFromMimeType(blobType)
+      const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type })
       try {
         const res = await api.file.upload(file)
         if (res.code === 200) {
+          if (!chatStore.connected) {
+            showToast('聊天未连接，发送失败')
+            return
+          }
           const duration = Math.max(1, Math.round((Date.now() - recordingStart.value) / 1000))
           chatStore.sendMedia('audio', res.data, { duration })
           scrollToBottom()
