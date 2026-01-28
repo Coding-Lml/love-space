@@ -216,6 +216,8 @@ const mergeUniqueById = (existing, incoming) => {
   return Array.from(map.values())
 }
 
+const requesting = ref(false)
+
 const fetchHeader = async () => {
   try {
     const res = await api.guest.getDashboard()
@@ -232,7 +234,8 @@ const fetchHeader = async () => {
 }
 
 const loadMore = async () => {
-  if (loading.value) return
+  if (requesting.value) return
+  requesting.value = true
   loading.value = true
   try {
     const res = await api.guest.getMoments(pageNum.value)
@@ -252,6 +255,7 @@ const loadMore = async () => {
     showToast('加载失败，请稍后重试')
   } finally {
     loading.value = false
+    requesting.value = false
   }
 }
 
