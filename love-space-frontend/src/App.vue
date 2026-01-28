@@ -13,11 +13,17 @@
       inactive-color="#999"
       @change="onTabChange"
     >
-      <van-tabbar-item name="home" icon="wap-home-o">首页</van-tabbar-item>
-      <van-tabbar-item name="moments" icon="photo-o">动态</van-tabbar-item>
-      <van-tabbar-item name="diary" icon="edit">日记</van-tabbar-item>
-      <van-tabbar-item name="anniversary" icon="calendar-o">纪念日</van-tabbar-item>
-      <van-tabbar-item name="profile" icon="user-o" :badge="chatStore.unreadCount || ''">我的</van-tabbar-item>
+      <template v-if="userStore.isOwner">
+        <van-tabbar-item name="home" icon="wap-home-o">首页</van-tabbar-item>
+        <van-tabbar-item name="moments" icon="photo-o">动态</van-tabbar-item>
+        <van-tabbar-item name="diary" icon="edit">日记</van-tabbar-item>
+        <van-tabbar-item name="anniversary" icon="calendar-o">纪念日</van-tabbar-item>
+        <van-tabbar-item name="profile" icon="user-o" :badge="chatStore.unreadCount || ''">我的</van-tabbar-item>
+      </template>
+      <template v-else>
+        <van-tabbar-item name="guestMoments" icon="photo-o">动态</van-tabbar-item>
+        <van-tabbar-item name="guestHome" icon="wap-home-o">主页</van-tabbar-item>
+      </template>
     </van-tabbar>
   </div>
 </template>
@@ -35,18 +41,24 @@ const chatStore = useChatStore()
 
 const activeTab = ref('home')
 
-const tabbarPages = ['home', 'moments', 'diary', 'anniversary', 'profile']
-const showTabbar = computed(() => tabbarPages.includes(route.name))
+const ownerTabbarPages = ['home', 'moments', 'diary', 'anniversary', 'profile']
+const guestTabbarPages = ['guestMoments', 'guestHome']
+const showTabbar = computed(() => {
+  if (!userStore.isLoggedIn) return false
+  return userStore.isOwner ? ownerTabbarPages.includes(route.name) : guestTabbarPages.includes(route.name)
+})
 
 // 监听路由变化，同步 tabbar 状态
 watch(() => route.name, (name) => {
-  if (tabbarPages.includes(name)) {
+  if (userStore.isOwner && ownerTabbarPages.includes(name)) {
+    activeTab.value = name
+  } else if (userStore.isGuest && guestTabbarPages.includes(name)) {
     activeTab.value = name
   }
 }, { immediate: true })
 
 watch(() => userStore.isLoggedIn, (loggedIn) => {
-  if (loggedIn) {
+  if (loggedIn && userStore.isOwner) {
     chatStore.connect()
   } else {
     chatStore.reset()

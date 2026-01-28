@@ -133,7 +133,7 @@ const onLogin = async () => {
         message: '欢迎回来 💕',
         icon: 'like-o'
       })
-      router.push({ name: 'home' })
+      router.replace({ name: userStore.isOwner ? 'home' : 'guestMoments' })
     } else {
       showToast(res.message || '登录失败')
     }
@@ -157,7 +157,7 @@ const onRegister = async () => {
         message: '注册成功 💕',
         icon: 'success'
       })
-      router.push({ name: 'home' })
+      router.replace({ name: userStore.isOwner ? 'home' : 'guestMoments' })
     } else {
       showToast(res.message || '注册失败')
     }

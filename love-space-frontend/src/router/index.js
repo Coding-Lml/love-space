@@ -99,12 +99,12 @@ router.beforeEach((to, from, next) => {
   const guestPages = ['guestHome', 'guestMoments']
 
   if (to.name === 'login' && userStore.isLoggedIn) {
-    next({ name: userStore.isOwner ? 'home' : 'guestHome' })
+    next({ name: userStore.isOwner ? 'home' : 'guestMoments' })
     return
   }
 
   if (userStore.isLoggedIn && userStore.isGuest && !guestPages.includes(to.name)) {
-    next({ name: 'guestHome' })
+    next({ name: 'guestMoments' })
     return
   }
 

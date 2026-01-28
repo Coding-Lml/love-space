@@ -8,6 +8,11 @@ export const useUserStore = defineStore('user', () => {
   const partner = ref(null)
   
   const isLoggedIn = computed(() => !!token.value)
+  const isOwner = computed(() => {
+    const username = user.value?.username
+    return username === 'limenglong' || username === 'zengfanrui'
+  })
+  const isGuest = computed(() => isLoggedIn.value && !isOwner.value)
   
   // 登录
   async function login(username, password) {
@@ -17,8 +22,11 @@ export const useUserStore = defineStore('user', () => {
       user.value = res.data.user
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))
-      // 获取另一半信息
-      await fetchPartner()
+      if (res.data.user?.username === 'limenglong' || res.data.user?.username === 'zengfanrui') {
+        await fetchPartner()
+      } else {
+        partner.value = null
+      }
     }
     return res
   }
@@ -30,7 +38,11 @@ export const useUserStore = defineStore('user', () => {
       user.value = res.data.user
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))
-      await fetchPartner()
+      if (res.data.user?.username === 'limenglong' || res.data.user?.username === 'zengfanrui') {
+        await fetchPartner()
+      } else {
+        partner.value = null
+      }
     }
     return res
   }
@@ -71,6 +83,8 @@ export const useUserStore = defineStore('user', () => {
     user,
     partner,
     isLoggedIn,
+    isOwner,
+    isGuest,
     login,
     register,
     logout,

@@ -1,8 +1,22 @@
 <template>
   <div class="home-page">
-    <van-nav-bar title="Love Space" />
+    <van-nav-bar title="主页" />
 
-    <LoveTimer :dashboard="dashboard" :left-user="couple?.user1" :right-user="couple?.user2" />
+    <div class="intro card" v-if="couple">
+      <div class="couple-avatars">
+        <img :src="couple?.user1?.avatar || '/default-avatar.png'" class="avatar avatar-large" fetchpriority="high" decoding="async" />
+        <span class="heart-icon">❤️</span>
+        <img :src="couple?.user2?.avatar || '/default-avatar.png'" class="avatar avatar-large" fetchpriority="high" decoding="async" />
+      </div>
+      <div class="couple-names">
+        <span>{{ couple?.user1?.nickname || couple?.user1?.username }}</span>
+        <span class="and">&</span>
+        <span>{{ couple?.user2?.nickname || couple?.user2?.username }}</span>
+      </div>
+      <div class="start-date" v-if="dashboard?.startDate">
+        从 {{ dashboard.startDate }} 开始 💕
+      </div>
+    </div>
 
     <div class="upcoming-section card" v-if="dashboard?.upcomingAnniversaries?.length">
       <div class="section-title">
@@ -42,9 +56,7 @@
       </div>
     </div>
 
-    <div class="empty-hint" v-if="!loading && !dashboard">
-      <p>加载中...</p>
-    </div>
+    <van-empty v-if="!loading && !dashboard" description="暂无内容" />
   </div>
 </template>
 
@@ -52,7 +64,6 @@
 import { ref, onMounted } from 'vue'
 import dayjs from 'dayjs'
 import api from '../api'
-import LoveTimer from '../components/LoveTimer.vue'
 
 const loading = ref(true)
 const dashboard = ref(null)
@@ -86,6 +97,42 @@ onMounted(() => {
 .home-page {
   min-height: 100vh;
   padding-bottom: 70px;
+}
+
+.intro {
+  text-align: center;
+  padding: 24px;
+  margin-top: 12px;
+  background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+}
+
+.couple-avatars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.heart-icon {
+  font-size: 28px;
+}
+
+.couple-names {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.couple-names .and {
+  margin: 0 8px;
+  color: var(--primary-color);
+}
+
+.start-date {
+  font-size: 13px;
+  color: var(--text-lighter);
+  margin-top: 12px;
 }
 
 .upcoming-list {
@@ -140,4 +187,3 @@ onMounted(() => {
   color: var(--text-color);
 }
 </style>
-

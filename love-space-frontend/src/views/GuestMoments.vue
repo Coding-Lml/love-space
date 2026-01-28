@@ -1,6 +1,6 @@
 <template>
   <div class="moments-page">
-    <van-nav-bar title="游客动态" />
+    <van-nav-bar title="动态" />
 
     <LoveTimer :dashboard="dashboard" :left-user="couple?.user1" :right-user="couple?.user2" />
 
@@ -478,4 +478,3 @@ onMounted(async () => {
   padding-left: 8px;
 }
 </style>
-
