@@ -132,16 +132,32 @@
           <span class="replying-text">回复 @{{ replyToComment.user?.nickname || replyToComment.user?.username }}</span>
           <van-icon name="cross" @click="clearReply" />
         </div>
-        <van-field
-          v-model="commentText"
-          :placeholder="replyToComment ? `回复 @${replyToComment.user?.nickname || replyToComment.user?.username}` : '写评论...'"
-          autofocus
-          @keyup.enter="submitComment"
-        >
-          <template #button>
-            <van-button size="small" type="primary" :loading="commentSubmitting" :disabled="commentSubmitting" @click="submitComment">发送</van-button>
-          </template>
-        </van-field>
+        <div class="input-row">
+          <div class="emoji-toggle" @click="toggleEmoji">
+            <span>😊</span>
+          </div>
+          <van-field
+            v-model="commentText"
+            :placeholder="replyToComment ? `回复 @${replyToComment.user?.nickname || replyToComment.user?.username}` : '写评论...'"
+            autofocus
+            @keyup.enter="submitComment"
+            class="comment-field"
+          >
+            <template #button>
+              <van-button size="small" type="primary" :loading="commentSubmitting" :disabled="commentSubmitting" @click="submitComment">发送</van-button>
+            </template>
+          </van-field>
+        </div>
+        <div v-if="showEmoji" class="emoji-panel">
+          <span
+            v-for="e in emojis"
+            :key="e"
+            class="emoji-item"
+            @click="appendEmoji(e)"
+          >
+            {{ e }}
+          </span>
+        </div>
       </div>
     </van-popup>
 
@@ -193,6 +209,16 @@ const commentText = ref('')
 const currentMoment = ref(null)
 const replyToComment = ref(null)
 const commentSubmitting = ref(false)
+const showEmoji = ref(false)
+const emojis = ['😊', '😍', '🥰', '😭', '😡', '🎂', '🌹', '❤️', '💔', '💤', '😘']
+
+const toggleEmoji = () => {
+  showEmoji.value = !showEmoji.value
+}
+
+const appendEmoji = e => {
+  commentText.value += e
+}
 
 const showMomentActionSheet = ref(false)
 const currentActionMoment = ref(null)
@@ -633,6 +659,37 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
   padding-right: 10px;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+}
+
+.emoji-toggle {
+  padding: 0 8px;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comment-field {
+  flex: 1;
+}
+
+.emoji-panel {
+  padding: 8px 4px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-top: 1px solid #f5f5f5;
+  margin-top: 4px;
+}
+
+.emoji-item {
+  font-size: 22px;
+  padding: 4px;
 }
 
 :deep(.van-field__button) {
