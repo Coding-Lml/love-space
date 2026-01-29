@@ -41,6 +41,8 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/health",
                                 "/ws/**",
+                                "/api/ws/**",
+                                "/chat",
                                 "/uploads/**",
                                 "/favicon.ico",
                                 "/error"
@@ -65,4 +67,3 @@ public class SecurityConfig {
         response.getWriter().write(objectMapper.writeValueAsString(Result.error(code, message)));
     }
 }
-
