@@ -15,6 +15,7 @@ export const useChatStore = defineStore('chat', () => {
   const reconnectInMs = ref(0)
   const lastDisconnectAt = ref(null)
   const lastClose = ref(null)
+  const lastAttemptUrl = ref(null)
 
   let reconnectTimer = null
   let reconnectAttempts = 0
@@ -87,71 +88,99 @@ export const useChatStore = defineStore('chat', () => {
     connecting.value = true
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const url = `${protocol}//${window.location.host}/ws/chat`
-    const socket = new WebSocket(url)
+    const host = window.location.host
+    const candidates = [
+      `${protocol}//${host}/ws/chat`,
+      `${protocol}//${host}/api/ws/chat`,
+      `${protocol}//${host}/chat`
+    ]
 
-    socket.onopen = () => {
-      ws.value = socket
-      try {
-        socket.send(JSON.stringify({ type: 'auth', token }))
-      } catch (e) {
+    const tryConnect = (index) => {
+      if (index >= candidates.length) {
+        connecting.value = false
+        scheduleReconnect()
+        return
+      }
+
+      const url = candidates[index]
+      lastAttemptUrl.value = url
+      const socket = new WebSocket(url)
+
+      let authed = false
+
+      socket.onopen = () => {
+        ws.value = socket
+        try {
+          socket.send(JSON.stringify({ type: 'auth', token }))
+        } catch (e) {
+          socket.close()
+        }
+      }
+
+      socket.onmessage = event => {
+        try {
+          const payload = JSON.parse(event.data)
+          if (payload.event === 'auth') {
+            if (payload.status === 'ok') {
+              authed = true
+              connected.value = true
+              connecting.value = false
+              reconnecting.value = false
+              reconnectAttempts = 0
+            } else {
+              socket.close()
+            }
+          } else if (payload.event === 'read') {
+            handleReadEvent(payload)
+          } else {
+            appendMessage(payload)
+          }
+        } catch (e) {
+        }
+      }
+
+      socket.onclose = event => {
+        const shouldFallback = !manualClose && !authed && index < candidates.length - 1
+        connected.value = false
+        connecting.value = shouldFallback ? true : false
+        ws.value = null
+        lastDisconnectAt.value = Date.now()
+        lastClose.value = {
+          code: event?.code ?? null,
+          reason: event?.reason ?? null,
+          wasClean: event?.wasClean ?? null,
+          url
+        }
+        if (!manualClose && event?.reason === 'unauthorized') {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          window.location.href = '/login'
+          return
+        }
+        if (shouldFallback) {
+          tryConnect(index + 1)
+          return
+        }
+        if (!manualClose) {
+          scheduleReconnect()
+        } else {
+          reconnecting.value = false
+          reconnectInMs.value = 0
+        }
+      }
+
+      socket.onerror = () => {
+        lastClose.value = {
+          code: 'error',
+          reason: 'socket error',
+          wasClean: false,
+          url
+        }
         socket.close()
       }
     }
 
-    socket.onmessage = event => {
-      try {
-        const payload = JSON.parse(event.data)
-        if (payload.event === 'auth') {
-          if (payload.status === 'ok') {
-            connected.value = true
-            connecting.value = false
-            reconnecting.value = false
-            reconnectAttempts = 0
-          } else {
-            socket.close()
-          }
-        } else if (payload.event === 'read') {
-          handleReadEvent(payload)
-        } else {
-          appendMessage(payload)
-        }
-      } catch (e) {
-      }
-    }
-
-    socket.onclose = event => {
-      connected.value = false
-      connecting.value = false
-      ws.value = null
-      lastDisconnectAt.value = Date.now()
-      lastClose.value = {
-        code: event?.code ?? null,
-        reason: event?.reason ?? null,
-        wasClean: event?.wasClean ?? null
-      }
-      if (!manualClose && event?.reason === 'unauthorized') {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
-        return
-      }
-      if (!manualClose) {
-        scheduleReconnect()
-      } else {
-        reconnecting.value = false
-        reconnectInMs.value = 0
-      }
-    }
-
-    socket.onerror = () => {
-      lastClose.value = {
-        code: 'error',
-        reason: 'socket error',
-        wasClean: false
-      }
-      socket.close()
-    }
+    tryConnect(0)
   }
 
   const appendMessage = msg => {
@@ -257,6 +286,7 @@ export const useChatStore = defineStore('chat', () => {
     reconnectInMs,
     lastDisconnectAt,
     lastClose,
+    lastAttemptUrl,
     messages,
     loadingHistory,
     hasMore,

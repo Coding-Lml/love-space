@@ -14,7 +14,7 @@
             : (
               chatStore.reconnecting
                 ? `网络断开，${Math.ceil(chatStore.reconnectInMs / 1000)}s 后重连（点此立即重连）`
-                : `连接已断开，点此重连${chatStore.lastClose?.code ? `（${chatStore.lastClose.code}${chatStore.lastClose.reason ? `:${chatStore.lastClose.reason}` : ''}）` : ''}`
+                : `连接已断开，点此重连${chatStore.lastClose?.code ? `（${chatStore.lastClose.code}${chatStore.lastClose.reason ? `:${chatStore.lastClose.reason}` : ''}${chatStore.lastClose.url ? ` ${chatStore.lastClose.url}` : ''}）` : ''}`
             )
         }}
       </div>
