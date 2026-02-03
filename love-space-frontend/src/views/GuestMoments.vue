@@ -552,9 +552,27 @@ const onImageError = (e, rawUrl) => {
   el.src = normalizeMediaUrl(rawUrl)
 }
 
+// 键盘事件监听
+const handleKeyDown = (e) => {
+  if (!showPreview.value) return
+  
+  if (e.key === 'ArrowLeft') {
+    prevImage()
+  } else if (e.key === 'ArrowRight') {
+    nextImage()
+  } else if (e.key === 'Escape') {
+    showPreview.value = false
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('keydown', handleKeyDown)
   await fetchHeader()
   await onRefresh()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
 
