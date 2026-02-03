@@ -128,6 +128,7 @@
 
     <!-- 图片预览组件 -->
     <van-image-preview
+      ref="previewRef"
       v-model:show="showPreview"
       :images="previewImages"
       :start-position="previewIndex"
@@ -136,6 +137,7 @@
       :max-zoom="3"
       :min-zoom="1"
       :show-index="true"
+      @change="onPreviewChange"
     >
       <template #cover>
         <div class="pc-preview-nav" @click.stop>
@@ -202,8 +204,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { showToast, showLoadingToast, closeToast, showImagePreview } from 'vant'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { showToast, showLoadingToast, closeToast } from 'vant'
 import dayjs from 'dayjs'
 import api from '../api'
 import { toThumbUrl, toPreviewUrl, normalizeMediaUrl } from '../utils/media'
@@ -510,17 +512,28 @@ const submitPublish = async () => {
 const showPreview = ref(false)
 const previewImages = ref([])
 const previewIndex = ref(0)
+const previewRef = ref(null)
+
+const onPreviewChange = (newIndex) => {
+  previewIndex.value = newIndex
+}
 
 const prevImage = () => {
-  if (previewIndex.value > 0) {
-    previewIndex.value--
+  const targetIndex = Math.max(0, previewIndex.value - 1)
+  if (targetIndex === previewIndex.value) return
+  if (previewRef.value?.swipeTo) {
+    previewRef.value.swipeTo(targetIndex)
   }
+  previewIndex.value = targetIndex
 }
 
 const nextImage = () => {
-  if (previewIndex.value < previewImages.value.length - 1) {
-    previewIndex.value++
+  const targetIndex = Math.min(previewImages.value.length - 1, previewIndex.value + 1)
+  if (targetIndex === previewIndex.value) return
+  if (previewRef.value?.swipeTo) {
+    previewRef.value.swipeTo(targetIndex)
   }
+  previewIndex.value = targetIndex
 }
 
 const onMediaClick = (mediaList, index) => {
@@ -557,8 +570,10 @@ const handleKeyDown = (e) => {
   if (!showPreview.value) return
   
   if (e.key === 'ArrowLeft') {
+    e.preventDefault()
     prevImage()
   } else if (e.key === 'ArrowRight') {
+    e.preventDefault()
     nextImage()
   } else if (e.key === 'Escape') {
     showPreview.value = false

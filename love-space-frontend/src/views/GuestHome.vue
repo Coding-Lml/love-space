@@ -20,7 +20,7 @@
       <div class="guest-help-title">游客模式说明</div>
       <div class="guest-help-text">你当前登录的是游客账号。</div>
       <div class="guest-help-text">可用功能：发布游客动态、查看主人公开动态。</div>
-      <div class="guest-help-text">不可用功能：日记、纪念日、聊天与空间管理（仅主人可用）。</div>
+      <div class="guest-help-text">不可用功能：日记、纪念日与空间管理（仅主人可用）。</div>
     </div>
 
     <van-cell-group inset title="账号与安全">
