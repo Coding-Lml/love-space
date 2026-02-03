@@ -510,6 +510,9 @@ const onMediaClick = (mediaList, index) => {
     closeOnPopstate: true,
     loop: false,
     swipeDuration: 300,
+    maxZoom: 3,
+    minZoom: 1,
+    showIndex: true,
   })
 }
 

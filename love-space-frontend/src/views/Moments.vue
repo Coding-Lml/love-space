@@ -398,6 +398,9 @@ const onMediaClick = (mediaList, index) => {
     closeOnPopstate: true,
     loop: false, // 是否循环播放
     swipeDuration: 300, // 滑动动画时长
+    maxZoom: 3, // 最大缩放倍数
+    minZoom: 1, // 最小缩放倍数
+    showIndex: true, // 显示页码
   })
 }
 
