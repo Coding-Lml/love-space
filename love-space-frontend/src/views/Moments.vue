@@ -103,8 +103,31 @@
       <van-icon name="plus" />
     </div>
     
-    <!-- 操作菜单 -->
-    <van-action-sheet
+    <!-- 图片预览组件 -->
+  <van-image-preview
+    v-model:show="showPreview"
+    :images="previewImages"
+    :start-position="previewIndex"
+    :closeable="true"
+    :loop="false"
+    :max-zoom="3"
+    :min-zoom="1"
+    :show-index="true"
+  >
+    <template #cover>
+      <div class="pc-preview-nav" @click.stop>
+        <div class="nav-btn prev" @click="prevImage" v-if="previewImages.length > 1 && previewIndex > 0">
+          <van-icon name="arrow-left" />
+        </div>
+        <div class="nav-btn next" @click="nextImage" v-if="previewImages.length > 1 && previewIndex < previewImages.length - 1">
+          <van-icon name="arrow" />
+        </div>
+      </div>
+    </template>
+  </van-image-preview>
+
+  <!-- 操作菜单 -->
+  <van-action-sheet
       v-model:show="showActionSheet"
       :actions="actions"
       cancel-text="取消"
@@ -363,6 +386,22 @@ const onCommentActionSelect = async (action) => {
   }
 }
 
+const showPreview = ref(false)
+const previewImages = ref([])
+const previewIndex = ref(0)
+
+const prevImage = () => {
+  if (previewIndex.value > 0) {
+    previewIndex.value--
+  }
+}
+
+const nextImage = () => {
+  if (previewIndex.value < previewImages.value.length - 1) {
+    previewIndex.value++
+  }
+}
+
 const onMediaClick = (mediaList, index) => {
   const target = Array.isArray(mediaList) ? mediaList[index] : null
   if (!target || target.type !== 'image') return
@@ -370,38 +409,23 @@ const onMediaClick = (mediaList, index) => {
   // 1. 过滤出所有图片
   const imageList = mediaList.filter(m => m.type === 'image')
   
-  // 2. 转换 URL：优先用 toPreviewUrl 生成带 OSS 参数的大图链接
-  // 如果没有 url，尝试用 thumbnail（虽然不太可能），最后做 normalize
-  const images = imageList.map(m => {
+  // 2. 转换 URL
+  previewImages.value = imageList.map(m => {
     const rawUrl = m.url || m.thumbnail
     const fullUrl = normalizeMediaUrl(rawUrl)
     return toPreviewUrl(fullUrl)
   })
   
-  // 3. 计算当前点击的图片在 imageList 中的索引（因为 mediaList 可能混有视频）
-  // 比如 mediaList: [video, imageA, imageB]，点击 imageB (index=2)
-  // imageList: [imageA, imageB]
-  // startPosition 应该是 1
+  // 3. 计算索引
   let startPosition = 0
   for (let i = 0; i < index; i++) {
     if (mediaList[i].type === 'image') {
       startPosition++
     }
   }
-
-  showImagePreview({
-    images,
-    startPosition,
-    closeable: true,
-    closeOnClickOverlay: true,
-    closeOnClickImage: true,
-    closeOnPopstate: true,
-    loop: false, // 是否循环播放
-    swipeDuration: 300, // 滑动动画时长
-    maxZoom: 3, // 最大缩放倍数
-    minZoom: 1, // 最小缩放倍数
-    showIndex: true, // 显示页码
-  })
+  
+  previewIndex.value = startPosition
+  showPreview.value = true
 }
 
 const onImageError = (e, rawUrl) => {
@@ -573,5 +597,51 @@ const goSquare = () => router.push({ name: 'square' })
 .emoji-item {
   font-size: 22px;
   padding: 4px;
+}
+
+.pc-preview-nav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .pc-preview-nav {
+    display: block;
+    pointer-events: none; /* 让中间区域穿透，不影响图片拖拽 */
+    position: fixed;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 3000;
+  }
+
+  .nav-btn {
+    pointer-events: auto; /* 按钮可点击 */
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .nav-btn:hover {
+    background: rgba(0, 0, 0, 0.6);
+    transform: scale(1.1);
+  }
+
+  .nav-btn.prev {
+    left: 40px;
+  }
+
+  .nav-btn.next {
+    right: 40px;
+  }
 }
 </style>

@@ -126,6 +126,30 @@
       </div>
     </van-popup>
 
+    <!-- 图片预览组件 -->
+    <van-image-preview
+      v-model:show="showPreview"
+      :images="previewImages"
+      :start-position="previewIndex"
+      :closeable="true"
+      :loop="false"
+      :max-zoom="3"
+      :min-zoom="1"
+      :show-index="true"
+    >
+      <template #cover>
+        <div class="pc-preview-nav" @click.stop>
+          <div class="nav-btn prev" @click="prevImage" v-if="previewImages.length > 1 && previewIndex > 0">
+            <van-icon name="arrow-left" />
+          </div>
+          <div class="nav-btn next" @click="nextImage" v-if="previewImages.length > 1 && previewIndex < previewImages.length - 1">
+            <van-icon name="arrow" />
+          </div>
+        </div>
+      </template>
+    </van-image-preview>
+
+    <!-- 评论输入框 -->
     <van-popup v-model:show="showCommentPopup" position="bottom" round>
       <div class="comment-input-wrapper">
         <div v-if="replyToComment" class="replying-bar">
@@ -483,12 +507,28 @@ const submitPublish = async () => {
   }
 }
 
+const showPreview = ref(false)
+const previewImages = ref([])
+const previewIndex = ref(0)
+
+const prevImage = () => {
+  if (previewIndex.value > 0) {
+    previewIndex.value--
+  }
+}
+
+const nextImage = () => {
+  if (previewIndex.value < previewImages.value.length - 1) {
+    previewIndex.value++
+  }
+}
+
 const onMediaClick = (mediaList, index) => {
   const target = Array.isArray(mediaList) ? mediaList[index] : null
   if (!target || target.type !== 'image') return
   
   const imageList = mediaList.filter(m => m.type === 'image')
-  const images = imageList.map(m => {
+  previewImages.value = imageList.map(m => {
     const rawUrl = m.url || m.thumbnail
     const fullUrl = normalizeMediaUrl(rawUrl)
     return toPreviewUrl(fullUrl)
@@ -501,19 +541,8 @@ const onMediaClick = (mediaList, index) => {
     }
   }
 
-  showImagePreview({
-    images,
-    startPosition,
-    closeable: true,
-    closeOnClickOverlay: true,
-    closeOnClickImage: true,
-    closeOnPopstate: true,
-    loop: false,
-    swipeDuration: 300,
-    maxZoom: 3,
-    minZoom: 1,
-    showIndex: true,
-  })
+  previewIndex.value = startPosition
+  showPreview.value = true
 }
 
 const onImageError = (e, rawUrl) => {
@@ -712,5 +741,51 @@ onMounted(async () => {
 
 :deep(.van-field__button) {
   padding-left: 8px;
+}
+
+.pc-preview-nav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .pc-preview-nav {
+    display: block;
+    pointer-events: none; /* 让中间区域穿透，不影响图片拖拽 */
+    position: fixed;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 3000;
+  }
+
+  .nav-btn {
+    pointer-events: auto; /* 按钮可点击 */
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .nav-btn:hover {
+    background: rgba(0, 0, 0, 0.6);
+    transform: scale(1.1);
+  }
+
+  .nav-btn.prev {
+    left: 40px;
+  }
+
+  .nav-btn.next {
+    right: 40px;
+  }
 }
 </style>
