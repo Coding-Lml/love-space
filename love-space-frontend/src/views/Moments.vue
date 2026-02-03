@@ -126,29 +126,6 @@
     </template>
   </van-image-preview>
 
-  <!-- 图片预览组件 -->
-  <van-image-preview
-    v-model:show="showPreview"
-    :images="previewImages"
-    :start-position="previewIndex"
-    :closeable="true"
-    :loop="false"
-    :max-zoom="3"
-    :min-zoom="1"
-    :show-index="true"
-  >
-    <template #cover>
-      <div class="pc-preview-nav" @click.stop>
-        <div class="nav-btn prev" @click="prevImage" v-if="previewImages.length > 1 && previewIndex > 0">
-          <van-icon name="arrow-left" />
-        </div>
-        <div class="nav-btn next" @click="nextImage" v-if="previewImages.length > 1 && previewIndex < previewImages.length - 1">
-          <van-icon name="arrow" />
-        </div>
-      </div>
-    </template>
-  </van-image-preview>
-
   <!-- 操作菜单 -->
   <van-action-sheet
       v-model:show="showActionSheet"
