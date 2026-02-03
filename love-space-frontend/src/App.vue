@@ -18,7 +18,7 @@
         <van-tabbar-item name="moments" icon="photo-o">动态</van-tabbar-item>
         <van-tabbar-item name="diary" icon="edit">日记</van-tabbar-item>
         <van-tabbar-item name="anniversary" icon="calendar-o">纪念日</van-tabbar-item>
-        <van-tabbar-item name="profile" icon="user-o" :badge="chatStore.unreadCount || ''">我的</van-tabbar-item>
+        <van-tabbar-item name="profile" icon="user-o">我的</van-tabbar-item>
       </template>
       <template v-else>
         <van-tabbar-item name="guestMoments" icon="photo-o">动态</van-tabbar-item>
@@ -32,12 +32,10 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from './stores/user'
-import { useChatStore } from './stores/chat'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-const chatStore = useChatStore()
 
 const activeTab = ref('home')
 
@@ -55,18 +53,6 @@ watch(() => route.name, (name) => {
   } else if (userStore.isGuest && guestTabbarPages.includes(name)) {
     activeTab.value = name
   }
-}, { immediate: true })
-
-watch(() => userStore.isLoggedIn, (loggedIn) => {
-  if (loggedIn && userStore.isOwner) {
-    chatStore.connect()
-  } else {
-    chatStore.reset()
-  }
-}, { immediate: true })
-
-watch(() => route.name, (name) => {
-  chatStore.setActive(name === 'chat')
 }, { immediate: true })
 
 const onTabChange = (name) => {

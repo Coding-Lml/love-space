@@ -123,16 +123,6 @@ const api = {
     }
   },
 
-  chat: {
-    history: (beforeId, size = 20) => http.get('/chat/history', {
-      params: {
-        beforeId,
-        size
-      }
-    }),
-    markRead: () => http.post('/chat/read')
-  },
-
   space: {
     current: () => http.get('/spaces/current')
   }

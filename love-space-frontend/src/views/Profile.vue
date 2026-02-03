@@ -28,12 +28,6 @@
     
     <van-cell-group inset title="设置">
       <van-cell title="我的空间" is-link @click="goSpace" />
-      <van-cell
-        title="聊天"
-        is-link
-        :value="chatStore.unreadCount ? `未读${chatStore.unreadCount}条` : ''"
-        @click="goChat"
-      />
       <van-cell title="修改昵称" is-link @click="showNicknamePopup = true" />
       <van-cell title="修改密码" is-link @click="showPasswordPopup = true" />
       <van-cell title="关于我们" is-link @click="showAbout = true" />
@@ -104,12 +98,10 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { useUserStore } from '../stores/user'
-import { useChatStore } from '../stores/chat'
 import api from '../api'
 
 const router = useRouter()
 const userStore = useUserStore()
-const chatStore = useChatStore()
 
 const showNicknamePopup = ref(false)
 const showPasswordPopup = ref(false)
@@ -128,10 +120,6 @@ const avatarActions = [
 ]
 
 const fileInput = ref(null)
-
-const goChat = () => {
-  router.push({ name: 'chat' })
-}
 
 const goSpace = () => {
   router.push({ name: 'space' })

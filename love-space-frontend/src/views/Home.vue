@@ -2,9 +2,6 @@
   <div class="home-page">
     <van-nav-bar title="Love Space" left-text="" right-text="">
       <template #right>
-        <van-badge :content="chatStore.unreadCount || ''" :show-zero="false" :max="99">
-          <van-icon name="chat-o" size="20" color="#ff6b81" style="margin-right: 16px" @click="goChat" />
-        </van-badge>
         <van-icon name="setting-o" size="20" color="#ff6b81" @click="goProfile" />
       </template>
     </van-nav-bar>
@@ -87,13 +84,11 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import { useChatStore } from '../stores/chat'
 import api from '../api'
 import dayjs from 'dayjs'
 
 const router = useRouter()
 const userStore = useUserStore()
-const chatStore = useChatStore()
 
 const loading = ref(true)
 const dashboard = ref(null)
@@ -135,7 +130,6 @@ const formatTime = (time) => {
 
 // 跳转
 const goProfile = () => router.push({ name: 'profile' })
-const goChat = () => router.push({ name: 'chat' })
 const goMoments = () => router.push({ name: 'moments' })
 
 onMounted(() => {
