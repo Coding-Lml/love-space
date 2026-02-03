@@ -182,7 +182,7 @@ import { ref, onMounted } from 'vue'
 import { showToast, showLoadingToast, closeToast, showImagePreview } from 'vant'
 import dayjs from 'dayjs'
 import api from '../api'
-import { toThumbUrl, normalizeMediaUrl } from '../utils/media'
+import { toThumbUrl, toPreviewUrl, normalizeMediaUrl } from '../utils/media'
 import LoveTimer from '../components/LoveTimer.vue'
 import { useUserStore } from '../stores/user'
 
@@ -486,15 +486,30 @@ const submitPublish = async () => {
 const onMediaClick = (mediaList, index) => {
   const target = Array.isArray(mediaList) ? mediaList[index] : null
   if (!target || target.type !== 'image') return
-  const images = mediaList.filter(m => m.type === 'image').map(m => normalizeMediaUrl(m.url))
-  const startPosition = mediaList.slice(0, index).filter(m => m.type === 'image').length
+  
+  const imageList = mediaList.filter(m => m.type === 'image')
+  const images = imageList.map(m => {
+    const rawUrl = m.url || m.thumbnail
+    const fullUrl = normalizeMediaUrl(rawUrl)
+    return toPreviewUrl(fullUrl)
+  })
+  
+  let startPosition = 0
+  for (let i = 0; i < index; i++) {
+    if (mediaList[i].type === 'image') {
+      startPosition++
+    }
+  }
+
   showImagePreview({
     images,
     startPosition,
     closeable: true,
     closeOnClickOverlay: true,
     closeOnClickImage: true,
-    closeOnPopstate: true
+    closeOnPopstate: true,
+    loop: false,
+    swipeDuration: 300,
   })
 }
 

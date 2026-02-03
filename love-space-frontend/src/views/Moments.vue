@@ -163,7 +163,7 @@ import { showToast, showConfirmDialog, showImagePreview } from 'vant'
 import { useUserStore } from '../stores/user'
 import api from '../api'
 import dayjs from 'dayjs'
-import { toThumbUrl, normalizeMediaUrl } from '../utils/media'
+import { toThumbUrl, toPreviewUrl, normalizeMediaUrl } from '../utils/media'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -366,15 +366,38 @@ const onCommentActionSelect = async (action) => {
 const onMediaClick = (mediaList, index) => {
   const target = Array.isArray(mediaList) ? mediaList[index] : null
   if (!target || target.type !== 'image') return
-  const images = mediaList.filter(m => m.type === 'image').map(m => normalizeMediaUrl(m.url))
-  const startPosition = mediaList.slice(0, index).filter(m => m.type === 'image').length
+  
+  // 1. 过滤出所有图片
+  const imageList = mediaList.filter(m => m.type === 'image')
+  
+  // 2. 转换 URL：优先用 toPreviewUrl 生成带 OSS 参数的大图链接
+  // 如果没有 url，尝试用 thumbnail（虽然不太可能），最后做 normalize
+  const images = imageList.map(m => {
+    const rawUrl = m.url || m.thumbnail
+    const fullUrl = normalizeMediaUrl(rawUrl)
+    return toPreviewUrl(fullUrl)
+  })
+  
+  // 3. 计算当前点击的图片在 imageList 中的索引（因为 mediaList 可能混有视频）
+  // 比如 mediaList: [video, imageA, imageB]，点击 imageB (index=2)
+  // imageList: [imageA, imageB]
+  // startPosition 应该是 1
+  let startPosition = 0
+  for (let i = 0; i < index; i++) {
+    if (mediaList[i].type === 'image') {
+      startPosition++
+    }
+  }
+
   showImagePreview({
     images,
     startPosition,
     closeable: true,
     closeOnClickOverlay: true,
     closeOnClickImage: true,
-    closeOnPopstate: true
+    closeOnPopstate: true,
+    loop: false, // 是否循环播放
+    swipeDuration: 300, // 滑动动画时长
   })
 }
 
