@@ -524,7 +524,6 @@ const prevImage = () => {
   if (previewRef.value?.swipeTo) {
     previewRef.value.swipeTo(targetIndex)
   }
-  previewIndex.value = targetIndex
 }
 
 const nextImage = () => {
@@ -533,7 +532,6 @@ const nextImage = () => {
   if (previewRef.value?.swipeTo) {
     previewRef.value.swipeTo(targetIndex)
   }
-  previewIndex.value = targetIndex
 }
 
 const onMediaClick = (mediaList, index) => {
