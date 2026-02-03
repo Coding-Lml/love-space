@@ -118,17 +118,40 @@
       cancel-text="取消"
       @select="onCommentActionSelect"
     />
+
+    <!-- 图片预览组件 -->
+    <van-image-preview
+      v-model:show="showPreview"
+      :images="previewImages"
+      :start-position="previewIndex"
+      :closeable="true"
+      :loop="false"
+      :max-zoom="3"
+      :min-zoom="1"
+      :show-index="true"
+    >
+      <template #cover>
+        <div class="pc-preview-nav" @click.stop>
+          <div class="nav-btn prev" @click="prevImage" v-if="previewImages.length > 1 && previewIndex > 0">
+            <van-icon name="arrow-left" />
+          </div>
+          <div class="nav-btn next" @click="nextImage" v-if="previewImages.length > 1 && previewIndex < previewImages.length - 1">
+            <van-icon name="arrow" />
+          </div>
+        </div>
+      </template>
+    </van-image-preview>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast, showConfirmDialog, showImagePreview } from 'vant'
+import { showToast, showConfirmDialog } from 'vant'
 import { useUserStore } from '../stores/user'
 import api from '../api'
 import dayjs from 'dayjs'
-import { toThumbUrl, normalizeMediaUrl } from '../utils/media'
+import { toThumbUrl, toPreviewUrl, normalizeMediaUrl } from '../utils/media'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -303,20 +326,68 @@ const onCommentActionSelect = async (action) => {
   }
 }
 
+const showPreview = ref(false)
+const previewImages = ref([])
+const previewIndex = ref(0)
+
+const prevImage = () => {
+  if (previewIndex.value > 0) {
+    previewIndex.value--
+  }
+}
+
+const nextImage = () => {
+  if (previewIndex.value < previewImages.value.length - 1) {
+    previewIndex.value++
+  }
+}
+
 const onMediaClick = (mediaList, index) => {
   const target = Array.isArray(mediaList) ? mediaList[index] : null
   if (!target || target.type !== 'image') return
-  const images = mediaList.filter(m => m.type === 'image').map(m => normalizeMediaUrl(m.url))
-  const startPosition = mediaList.slice(0, index).filter(m => m.type === 'image').length
-  showImagePreview({
-    images,
-    startPosition,
-    closeable: true,
-    closeOnClickOverlay: true,
-    closeOnClickImage: true,
-    closeOnPopstate: true
+  
+  // 1. 过滤出所有图片
+  const imageList = mediaList.filter(m => m.type === 'image')
+  
+  // 2. 转换 URL
+  previewImages.value = imageList.map(m => {
+    const rawUrl = m.url || m.thumbnail
+    const fullUrl = normalizeMediaUrl(rawUrl)
+    return toPreviewUrl(fullUrl)
   })
+  
+  // 3. 计算索引
+  let startPosition = 0
+  for (let i = 0; i < index; i++) {
+    if (mediaList[i].type === 'image') {
+      startPosition++
+    }
+  }
+  
+  previewIndex.value = startPosition
+  showPreview.value = true
 }
+
+// 键盘事件监听
+const handleKeyDown = (e) => {
+  if (!showPreview.value) return
+  
+  if (e.key === 'ArrowLeft') {
+    prevImage()
+  } else if (e.key === 'ArrowRight') {
+    nextImage()
+  } else if (e.key === 'Escape') {
+    showPreview.value = false
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+})
 
 const onImageError = (e, rawUrl) => {
   const el = e?.target
@@ -416,5 +487,51 @@ const goCreate = () => router.push({ name: 'momentCreate' })
 
 :deep(.van-field__button) {
   padding-left: 8px;
+}
+
+.pc-preview-nav {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .pc-preview-nav {
+    display: block;
+    pointer-events: none; /* 让中间区域穿透，不影响图片拖拽 */
+    position: fixed;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 3000;
+  }
+
+  .nav-btn {
+    pointer-events: auto; /* 按钮可点击 */
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .nav-btn:hover {
+    background: rgba(0, 0, 0, 0.6);
+    transform: scale(1.1);
+  }
+
+  .nav-btn.prev {
+    left: 40px;
+  }
+
+  .nav-btn.next {
+    right: 40px;
+  }
 }
 </style>
