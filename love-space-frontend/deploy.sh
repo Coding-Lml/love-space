@@ -23,6 +23,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# 清理旧的依赖
+echo ""
+echo "清理旧依赖..."
+rm -rf node_modules package-lock.json
+
+# 清理 npm 缓存
+echo "清理 npm 缓存..."
+npm cache clean --force
+
 # 安装依赖
 echo ""
 echo "安装依赖..."
