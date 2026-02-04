@@ -57,15 +57,25 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# 清除 Nginx 缓存（如果有）
+echo ""
+echo "清除缓存..."
+find /var/cache/nginx -type f -delete 2>/dev/null || true
+
 # 重载 Nginx
 systemctl reload nginx
 
 echo ""
 echo "=========================================="
 echo "  ✅ 前端部署成功！"
-echo "=========================================="
+echo "==========================================="
 echo ""
 echo "  访问地址: http://你的服务器IP"
+echo ""
+echo "  ⚠️  手机浏览器请清除缓存后访问："
+echo "    - Safari: 设置 > Safari > 清除历史记录与网站数据"
+echo "    - Chrome: 设置 > 隐私和安全 > 清除浏览数据"
+echo "    - 或使用无痕/隐私模式访问"
 echo ""
 echo "  默认账号："
 echo "    用户名: limenglong / zengfanrui"
