@@ -437,13 +437,6 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyboard)
 })
 
-const onImageError = (e, rawUrl) => {
-  const el = e?.target
-  if (!el || el.dataset.fallbackApplied === '1') return
-  el.dataset.fallbackApplied = '1'
-  el.src = normalizeMediaUrl(rawUrl)
-}
-
 // 发布
 const goCreate = () => router.push({ name: 'momentCreate' })
 const goSquare = () => router.push({ name: 'square' })
