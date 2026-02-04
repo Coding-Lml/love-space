@@ -8,7 +8,12 @@ echo "=========================================="
 echo "  💕 Love Space 前端 - 部署脚本"
 echo "=========================================="
 
-cd /data/love-space/frontend
+# 获取脚本所在目录
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
+
+echo "工作目录: $SCRIPT_DIR"
+echo ""
 
 # 检查 Node.js
 echo "检查 Node.js..."
