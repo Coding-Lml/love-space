@@ -105,28 +105,16 @@
     
     <!-- 图片预览组件 -->
   <van-image-preview
-    ref="previewRef"
     v-model:show="showPreview"
     :images="previewImages"
     :start-position="previewIndex"
     :closeable="true"
-    :loop="false"
+    :loop="true"
     :max-zoom="3"
     :min-zoom="1"
     :show-index="true"
     @change="onPreviewChange"
-  >
-    <template #cover>
-      <div class="pc-preview-nav" @click.stop>
-        <div class="nav-btn prev" @click="prevImage" v-if="previewImages.length > 1 && previewIndex > 0">
-          <van-icon name="arrow-left" />
-        </div>
-        <div class="nav-btn next" @click="nextImage" v-if="previewImages.length > 1 && previewIndex < previewImages.length - 1">
-          <van-icon name="arrow" />
-        </div>
-      </div>
-    </template>
-  </van-image-preview>
+  />
 
   <!-- 操作菜单 -->
   <van-action-sheet
@@ -182,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { useUserStore } from '../stores/user'
@@ -391,26 +379,9 @@ const onCommentActionSelect = async (action) => {
 const showPreview = ref(false)
 const previewImages = ref([])
 const previewIndex = ref(0)
-const previewRef = ref(null)
 
 const onPreviewChange = (newIndex) => {
   previewIndex.value = newIndex
-}
-
-const prevImage = () => {
-  const targetIndex = Math.max(0, previewIndex.value - 1)
-  if (targetIndex === previewIndex.value) return
-  if (previewRef.value?.swipeTo) {
-    previewRef.value.swipeTo(targetIndex)
-  }
-}
-
-const nextImage = () => {
-  const targetIndex = Math.min(previewImages.value.length - 1, previewIndex.value + 1)
-  if (targetIndex === previewIndex.value) return
-  if (previewRef.value?.swipeTo) {
-    previewRef.value.swipeTo(targetIndex)
-  }
 }
 
 const onMediaClick = (mediaList, index) => {
@@ -438,29 +409,6 @@ const onMediaClick = (mediaList, index) => {
   previewIndex.value = startPosition
   showPreview.value = true
 }
-
-// 键盘事件监听
-const handleKeyDown = (e) => {
-  if (!showPreview.value) return
-  
-  if (e.key === 'ArrowLeft') {
-    e.preventDefault()
-    prevImage()
-  } else if (e.key === 'ArrowRight') {
-    e.preventDefault()
-    nextImage()
-  } else if (e.key === 'Escape') {
-    showPreview.value = false
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown)
-})
 
 const onImageError = (e, rawUrl) => {
   const el = e?.target
@@ -631,51 +579,5 @@ const goSquare = () => router.push({ name: 'square' })
 .emoji-item {
   font-size: 22px;
   padding: 4px;
-}
-
-.pc-preview-nav {
-  display: none;
-}
-
-@media (min-width: 768px) {
-  .pc-preview-nav {
-    display: block;
-    pointer-events: none; /* 让中间区域穿透，不影响图片拖拽 */
-    position: fixed;
-    top: 50%;
-    left: 0;
-    right: 0;
-    transform: translateY(-50%);
-    z-index: 3000;
-  }
-
-  .nav-btn {
-    pointer-events: auto; /* 按钮可点击 */
-    position: absolute;
-    width: 48px;
-    height: 48px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-size: 24px;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-
-  .nav-btn:hover {
-    background: rgba(0, 0, 0, 0.6);
-    transform: scale(1.1);
-  }
-
-  .nav-btn.prev {
-    left: 40px;
-  }
-
-  .nav-btn.next {
-    right: 40px;
-  }
 }
 </style>
