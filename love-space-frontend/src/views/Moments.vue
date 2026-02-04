@@ -170,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { useUserStore } from '../stores/user'
@@ -409,6 +409,33 @@ const onMediaClick = (mediaList, index) => {
   previewIndex.value = startPosition
   showPreview.value = true
 }
+
+const onImageError = (e, rawUrl) => {
+  const el = e?.target
+  if (!el || el.dataset.fallbackApplied === '1') return
+  el.dataset.fallbackApplied = '1'
+  el.src = normalizeMediaUrl(rawUrl)
+}
+
+// 键盘切换图片
+const handleKeyboard = (e) => {
+  if (!showPreview.value) return
+  if (e.key === 'ArrowLeft' && previewIndex.value > 0) {
+    previewIndex.value--
+  } else if (e.key === 'ArrowRight' && previewIndex.value < previewImages.value.length - 1) {
+    previewIndex.value++
+  } else if (e.key === 'Escape') {
+    showPreview.value = false
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyboard)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyboard)
+})
 
 const onImageError = (e, rawUrl) => {
   const el = e?.target
