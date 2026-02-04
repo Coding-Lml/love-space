@@ -23,23 +23,22 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# 清理旧的依赖
-echo ""
-echo "清理旧依赖..."
-rm -rf node_modules package-lock.json
-
-# 清理 npm 缓存
-echo "清理 npm 缓存..."
-npm cache clean --force
-
 # 安装依赖
 echo ""
 echo "安装依赖..."
 npm install
 
 if [ $? -ne 0 ]; then
-    echo "❌ 依赖安装失败"
-    exit 1
+    echo ""
+    echo "❌ 依赖安装失败，尝试清理后重试..."
+    rm -rf node_modules package-lock.json
+    npm cache clean --force
+    npm install
+    
+    if [ $? -ne 0 ]; then
+        echo "❌ 依贖安装仍然失败"
+        exit 1
+    fi
 fi
 
 # 构建
