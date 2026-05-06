@@ -123,6 +123,27 @@ const api = {
     }
   },
 
+  chat: {
+    getMessages: (pageNum = 1, pageSize = 20) => http.get('/chat/messages', { params: { pageNum, pageSize } }),
+    sendMessage: (data) => http.post('/chat/messages', data),
+    sendMedia: (type, file, options = {}) => {
+      const formData = new FormData()
+      formData.append('type', type)
+      formData.append('file', file)
+      if (options.content) {
+        formData.append('content', options.content)
+      }
+      if (options.duration) {
+        formData.append('duration', String(options.duration))
+      }
+      return http.post('/chat/media', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+    },
+    markRead: () => http.post('/chat/read'),
+    getUnreadCount: () => http.get('/chat/unread-count')
+  },
+
   space: {
     current: () => http.get('/spaces/current')
   }

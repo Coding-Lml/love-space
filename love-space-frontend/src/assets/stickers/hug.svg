@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="34" fill="#eef7ff"/>
+  <circle cx="90" cy="64" r="30" fill="#7cc7ff"/>
+  <path d="M52 138c8-34 24-50 38-50s30 16 38 50" fill="#7cc7ff"/>
+  <path d="M50 101c19 22 61 22 80 0" stroke="#2b6f9e" stroke-width="11" stroke-linecap="round" fill="none"/>
+  <text x="90" y="158" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#245d86">HUG</text>
+</svg>

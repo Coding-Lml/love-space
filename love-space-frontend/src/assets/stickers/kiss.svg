@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="34" fill="#fff1fb"/>
+  <path d="M46 78c18-28 43-14 44 4 2-18 27-32 44-4 14 24-13 45-44 64-31-19-58-40-44-64z" fill="#ff6bb5"/>
+  <path d="M62 56c16-12 28-6 35 5 7-11 19-17 35-5" stroke="#cc2d83" stroke-width="8" stroke-linecap="round" fill="none"/>
+  <text x="90" y="156" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#9c1f66">KISS</text>
+</svg>

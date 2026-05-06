@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="34" fill="#fff8e7"/>
+  <circle cx="90" cy="76" r="44" fill="#ffd166"/>
+  <circle cx="73" cy="70" r="6" fill="#4b3f2f"/>
+  <circle cx="107" cy="70" r="6" fill="#4b3f2f"/>
+  <path d="M72 94c12 10 24 10 36 0" stroke="#4b3f2f" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <text x="90" y="145" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#8a5a00">MISS U</text>
+</svg>

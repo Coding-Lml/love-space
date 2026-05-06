@@ -40,6 +40,7 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/register",
                                 "/api/health",
+                                "/ws/**",
                                 "/uploads/**",
                                 "/favicon.ico",
                                 "/error"

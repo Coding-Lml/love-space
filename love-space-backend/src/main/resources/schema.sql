@@ -137,7 +137,8 @@ CREATE TABLE IF NOT EXISTS `chat_message` (
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
     INDEX `idx_space_id` (`space_id`),
     INDEX `idx_user_pair_time` (`from_user_id`, `to_user_id`, `created_at`),
-    INDEX `idx_to_user_time` (`to_user_id`, `created_at`)
+    INDEX `idx_to_user_time` (`to_user_id`, `created_at`),
+    INDEX `idx_chat_unread` (`space_id`, `to_user_id`, `from_user_id`, `status`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='聊天消息表';
 
 -- ==========================================

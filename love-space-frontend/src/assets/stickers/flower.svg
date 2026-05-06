@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="34" fill="#effaf2"/>
+  <path d="M90 92c-24-23-18-47 0-47s24 24 0 47z" fill="#ff7aa2"/>
+  <path d="M90 92c23-24 47-18 47 0s-24 24-47 0z" fill="#ff9db9"/>
+  <path d="M90 92c24 23 18 47 0 47s-24-24 0-47z" fill="#ff7aa2"/>
+  <path d="M90 92c-23 24-47 18-47 0s24-24 47 0z" fill="#ff9db9"/>
+  <circle cx="90" cy="92" r="15" fill="#ffe066"/>
+  <text x="90" y="160" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" font-weight="700" fill="#2b7a4b">FLOWER</text>
+</svg>
