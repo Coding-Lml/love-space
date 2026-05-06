@@ -44,17 +44,21 @@ public class MomentController {
             for (MultipartFile file : files) {
                 if (!file.isEmpty()) {
                     Result<String> uploadResult = fileService.uploadFile(file);
-                    if (uploadResult.getCode() == 200) {
-                        MomentMedia media = new MomentMedia();
-                        String url = uploadResult.getData();
-                        String type = fileService.getFileType(file.getContentType());
-                        media.setUrl(url);
-                        media.setType(type);
-                        if ("image".equals(type)) {
-                            media.setThumbnail(fileService.buildThumbnailUrl(url));
-                        }
-                        mediaList.add(media);
+                    if (uploadResult.getCode() != 200) {
+                        return Result.error(uploadResult.getMessage());
                     }
+                    MomentMedia media = new MomentMedia();
+                    String url = uploadResult.getData();
+                    String type = fileService.getFileType(file.getContentType());
+                    if ("unknown".equals(type)) {
+                        return Result.error("不支持的文件类型");
+                    }
+                    media.setUrl(url);
+                    media.setType(type);
+                    if ("image".equals(type)) {
+                        media.setThumbnail(fileService.buildThumbnailUrl(url));
+                    }
+                    mediaList.add(media);
                 }
             }
         }
