@@ -4,7 +4,7 @@ import { showToast } from 'vant'
 // 创建 axios 实例
 const http = axios.create({
   baseURL: '/api',
-  timeout: 30000
+  timeout: 120000
 })
 
 // 请求拦截器
@@ -70,8 +70,9 @@ const api = {
   guest: {
     getDashboard: () => http.get('/guest/dashboard'),
     getMoments: (pageNum = 1, pageSize = 10) => http.get('/guest/moments', { params: { pageNum, pageSize } }),
-    publishMoment: (formData) => http.post('/guest/moments', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    publishMoment: (formData, config = {}) => http.post('/guest/moments', formData, {
+      ...config,
+      headers: { 'Content-Type': 'multipart/form-data', ...(config.headers || {}) }
     }),
     deleteMoment: (id) => http.delete(`/guest/moments/${id}`),
     addComment: (id, content, replyToCommentId) => http.post(`/guest/moments/${id}/comments`, { content, replyToCommentId }),
@@ -83,8 +84,9 @@ const api = {
     getList: (pageNum = 1, pageSize = 10) => http.get('/moments', { params: { pageNum, pageSize } }),
     getPublicList: (pageNum = 1, pageSize = 10) => http.get('/moments/public', { params: { pageNum, pageSize } }),
     getDetail: (id) => http.get(`/moments/${id}`),
-    create: (formData) => http.post('/moments', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    create: (formData, config = {}) => http.post('/moments', formData, {
+      ...config,
+      headers: { 'Content-Type': 'multipart/form-data', ...(config.headers || {}) }
     }),
     delete: (id) => http.delete(`/moments/${id}`),
     like: (id) => http.post(`/moments/${id}/like`),

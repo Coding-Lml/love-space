@@ -5,7 +5,14 @@
     <LoveTimer :dashboard="dashboard" :left-user="couple?.user1" :right-user="couple?.user2" />
 
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+      <van-skeleton
+        v-if="loading && pageNum === 1 && !moments.length"
+        title
+        :row="4"
+        class="feed-skeleton"
+      />
       <van-list
+        v-else
         v-model:loading="loading"
         :finished="finished"
         finished-text="没有更多了"
@@ -121,6 +128,19 @@
             </div>
           </van-uploader>
         </div>
+        <div v-if="submitting" class="publish-status" aria-live="polite">
+          <div class="publish-status-row">
+            <span>{{ publishStatus.message }}</span>
+            <span v-if="publishStatus.percent !== null">{{ publishStatus.percent }}%</span>
+          </div>
+          <van-progress
+            v-if="publishStatus.percent !== null"
+            :percentage="publishStatus.percent"
+            stroke-width="6"
+            color="#ff6b81"
+            :show-pivot="false"
+          />
+        </div>
         <van-field v-model="publishForm.location" label="位置" placeholder="添加位置" left-icon="location-o" />
         <van-button type="primary" block round :loading="submitting" @click="submitPublish">发布</van-button>
       </div>
@@ -197,6 +217,7 @@ import { showToast, showLoadingToast, closeToast } from 'vant'
 import dayjs from 'dayjs'
 import api from '../api'
 import { toThumbUrl, toPreviewUrl, normalizeMediaUrl } from '../utils/media'
+import { prepareUploadFiles } from '../utils/upload'
 import LoveTimer from '../components/LoveTimer.vue'
 import { useUserStore } from '../stores/user'
 
@@ -217,6 +238,15 @@ const publishForm = ref({
   location: ''
 })
 const fileList = ref([])
+const publishStatus = ref({
+  phase: 'idle',
+  percent: null,
+  message: ''
+})
+
+const setPublishStatus = (phase, message, percent = null) => {
+  publishStatus.value = { phase, message, percent }
+}
 
 const showCommentPopup = ref(false)
 const commentText = ref('')
@@ -414,6 +444,7 @@ const onMomentActionSelect = async (action) => {
 const openPublish = () => {
   publishForm.value = { content: '', location: '' }
   fileList.value = []
+  setPublishStatus('idle', '', null)
   showPublishPopup.value = true
 }
 
@@ -469,29 +500,51 @@ const submitPublish = async () => {
   }
 
   submitting.value = true
-  showLoadingToast({ message: '发布中...', forbidClick: true, duration: 0 })
+  setPublishStatus('preparing', '正在处理图片…', fileList.value.length ? 0 : null)
+  showLoadingToast({ message: '正在处理图片…', forbidClick: true, duration: 0 })
 
   try {
+    const preparedFiles = await prepareUploadFiles(fileList.value, progress => {
+      setPublishStatus('preparing', `正在处理图片 ${progress.current}/${progress.total}`, progress.percent)
+    })
+
     const formData = new FormData()
     if (publishForm.value.content) formData.append('content', publishForm.value.content)
     if (publishForm.value.location) formData.append('location', publishForm.value.location)
-    fileList.value.forEach(file => {
+    preparedFiles.forEach(file => {
       if (file.file) formData.append('files', file.file)
     })
 
-    const res = await api.guest.publishMoment(formData)
+    setPublishStatus('uploading', '正在上传…', preparedFiles.length ? 0 : null)
+    showLoadingToast({ message: '正在上传…', forbidClick: true, duration: 0 })
+    const res = await api.guest.publishMoment(formData, {
+      onUploadProgress: event => {
+        if (!event.total) {
+          setPublishStatus('uploading', '正在上传…', null)
+          return
+        }
+        const percent = Math.min(95, Math.round((event.loaded / event.total) * 100))
+        setPublishStatus('uploading', '正在上传…', percent)
+      }
+    })
+    setPublishStatus('publishing', '正在发布…', 95)
     closeToast()
 
     if (res.code === 200) {
+      setPublishStatus('success', '发布成功', 100)
       showToast({ message: '发布成功', icon: 'success' })
       showPublishPopup.value = false
+      setPublishStatus('publishing', '正在刷新动态…', 100)
       await onRefresh()
     } else {
+      setPublishStatus('error', res.message || '发布失败', null)
       showToast(res.message || '发布失败')
     }
   } catch (e) {
     closeToast()
-    showToast('发布失败，请重试')
+    const message = e?.code === 'ECONNABORTED' ? '上传超时，请检查网络后重试' : '发布失败，请重试'
+    setPublishStatus('error', message, null)
+    showToast(message)
   } finally {
     submitting.value = false
   }
@@ -548,8 +601,7 @@ const handleKeyboard = (e) => {
 
 onMounted(async () => {
   window.addEventListener('keydown', handleKeyboard)
-  await fetchHeader()
-  await onRefresh()
+  await Promise.allSettled([fetchHeader(), onRefresh()])
 })
 
 onUnmounted(() => {
@@ -565,6 +617,13 @@ onUnmounted(() => {
 
 .moment-card {
   margin-bottom: 12px;
+}
+
+.feed-skeleton {
+  margin: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
 }
 
 .moment-header {
@@ -671,6 +730,22 @@ onUnmounted(() => {
 
 .upload-section {
   margin: 16px 0;
+}
+
+.publish-status {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--bg-color);
+}
+
+.publish-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-light);
 }
 
 .upload-trigger {

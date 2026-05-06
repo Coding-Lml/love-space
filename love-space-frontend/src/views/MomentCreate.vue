@@ -48,6 +48,20 @@
           </div>
         </van-uploader>
       </div>
+
+      <div v-if="submitting" class="publish-status" aria-live="polite">
+        <div class="publish-status-row">
+          <span>{{ publishStatus.message }}</span>
+          <span v-if="publishStatus.percent !== null">{{ publishStatus.percent }}%</span>
+        </div>
+        <van-progress
+          v-if="publishStatus.percent !== null"
+          :percentage="publishStatus.percent"
+          stroke-width="6"
+          color="#ff6b81"
+          :show-pivot="false"
+        />
+      </div>
       
       <!-- 位置 -->
       <van-cell-group inset>
@@ -72,6 +86,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showLoadingToast, closeToast } from 'vant'
 import api from '../api'
+import { prepareUploadFiles } from '../utils/upload'
 
 const router = useRouter()
 
@@ -82,6 +97,15 @@ const form = ref({
 })
 const fileList = ref([])
 const submitting = ref(false)
+const publishStatus = ref({
+  phase: 'idle',
+  percent: null,
+  message: ''
+})
+
+const setPublishStatus = (phase, message, percent = null) => {
+  publishStatus.value = { phase, message, percent }
+}
 
 const beforeRead = (file) => {
   const files = Array.isArray(file) ? file : [file]
@@ -138,9 +162,14 @@ const submit = async () => {
   }
   
   submitting.value = true
-  showLoadingToast({ message: '发布中...', forbidClick: true, duration: 0 })
+  setPublishStatus('preparing', '正在处理图片…', fileList.value.length ? 0 : null)
+  showLoadingToast({ message: '正在处理图片…', forbidClick: true, duration: 0 })
   
   try {
+    const preparedFiles = await prepareUploadFiles(fileList.value, progress => {
+      setPublishStatus('preparing', `正在处理图片 ${progress.current}/${progress.total}`, progress.percent)
+    })
+
     // 构建 FormData
     const formData = new FormData()
     if (form.value.content) {
@@ -152,24 +181,40 @@ const submit = async () => {
     formData.append('visibility', form.value.isPublic ? 'PUBLIC' : 'SPACE')
     
     // 添加文件
-    fileList.value.forEach(file => {
+    preparedFiles.forEach(file => {
       if (file.file) {
         formData.append('files', file.file)
       }
     })
     
-    const res = await api.moments.create(formData)
+    setPublishStatus('uploading', '正在上传…', preparedFiles.length ? 0 : null)
+    showLoadingToast({ message: '正在上传…', forbidClick: true, duration: 0 })
+    const res = await api.moments.create(formData, {
+      onUploadProgress: event => {
+        if (!event.total) {
+          setPublishStatus('uploading', '正在上传…', null)
+          return
+        }
+        const percent = Math.min(95, Math.round((event.loaded / event.total) * 100))
+        setPublishStatus('uploading', '正在上传…', percent)
+      }
+    })
+    setPublishStatus('publishing', '正在发布…', 95)
     closeToast()
     
     if (res.code === 200) {
+      setPublishStatus('success', '发布成功', 100)
       showToast({ message: '发布成功 💕', icon: 'success' })
       router.back()
     } else {
+      setPublishStatus('error', res.message || '发布失败', null)
       showToast(res.message || '发布失败')
     }
   } catch (e) {
     closeToast()
-    showToast('发布失败，请重试')
+    const message = e?.code === 'ECONNABORTED' ? '上传超时，请检查网络后重试' : '发布失败，请重试'
+    setPublishStatus('error', message, null)
+    showToast(message)
   } finally {
     submitting.value = false
   }
@@ -193,6 +238,22 @@ const submit = async () => {
 
 .upload-section {
   margin: 16px 0;
+}
+
+.publish-status {
+  margin: 12px 0 16px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--bg-color);
+}
+
+.publish-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-light);
 }
 
 .upload-trigger {

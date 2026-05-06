@@ -8,8 +8,15 @@
     
     <!-- 下拉刷新 -->
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+      <van-skeleton
+        v-if="loading && pageNum === 1 && !moments.length"
+        title
+        :row="4"
+        class="feed-skeleton"
+      />
       <!-- 动态列表 -->
       <van-list
+        v-else
         v-model:loading="loading"
         :finished="finished"
         finished-text="没有更多了"
@@ -450,6 +457,13 @@ const goSquare = () => router.push({ name: 'square' })
 
 .moment-card {
   margin-bottom: 12px;
+}
+
+.feed-skeleton {
+  margin: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
 }
 
 .moment-header {
