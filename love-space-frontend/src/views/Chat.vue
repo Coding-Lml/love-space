@@ -101,6 +101,7 @@
     </div>
 
     <input ref="imageInput" type="file" accept="image/*" class="hidden-input" @change="onImageSelected" />
+    <input ref="audioInput" type="file" accept="audio/*" class="hidden-input" @change="onAudioSelected" />
 
     <van-image-preview
       v-model:show="showPreview"
@@ -139,6 +140,7 @@ const sending = ref(false)
 const mediaSending = ref(false)
 const showStickerPanel = ref(false)
 const imageInput = ref(null)
+const audioInput = ref(null)
 const messageScroller = ref(null)
 const showPreview = ref(false)
 const previewImages = ref([])
@@ -333,15 +335,25 @@ const toggleRecording = async () => {
   }
 }
 
+const pickAudioFile = () => {
+  audioInput.value?.click()
+}
+
 const startRecording = async () => {
+  if (!window.isSecureContext) {
+    showToast('当前访问方式不支持录音，请选择音频文件发送')
+    pickAudioFile()
+    return
+  }
   if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-    showToast('当前浏览器不支持录音')
+    showToast('当前浏览器不支持录音，请选择音频文件发送')
+    pickAudioFile()
     return
   }
   try {
     recordStream = await navigator.mediaDevices.getUserMedia({ audio: true })
     recordChunks = []
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
+    const mimeType = pickRecorderMimeType()
     mediaRecorder = new MediaRecorder(recordStream, mimeType ? { mimeType } : undefined)
     mediaRecorder.ondataavailable = event => {
       if (event.data?.size) recordChunks.push(event.data)
@@ -355,9 +367,21 @@ const startRecording = async () => {
     mediaRecorder.start()
     isRecording.value = true
   } catch (e) {
-    showToast('无法访问麦克风')
+    showToast('无法访问麦克风，请选择音频文件发送')
     cleanupRecorder()
+    pickAudioFile()
   }
+}
+
+const pickRecorderMimeType = () => {
+  const candidates = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+    'audio/ogg'
+  ]
+  return candidates.find(type => MediaRecorder.isTypeSupported(type)) || ''
 }
 
 const stopRecording = () => {
@@ -378,7 +402,22 @@ const sendRecordedVoice = async () => {
     showToast('录音为空')
     return
   }
-  const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || 'audio/webm' })
+  const file = new File([blob], `voice-${Date.now()}${audioExtension(blob.type)}`, { type: baseAudioType(blob.type) || 'audio/webm' })
+  await sendAudioFile(file, duration)
+}
+
+const onAudioSelected = async (event) => {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (!file.type.startsWith('audio/')) {
+    showToast('请选择音频文件')
+    return
+  }
+  await sendAudioFile(file)
+}
+
+const sendAudioFile = async (file, duration) => {
   mediaSending.value = true
   try {
     const res = await api.chat.sendMedia('audio', file, { duration })
@@ -395,6 +434,20 @@ const sendRecordedVoice = async () => {
     mediaSending.value = false
     recordSeconds.value = 0
   }
+}
+
+const baseAudioType = (type) => {
+  if (!type) return ''
+  return type.split(';')[0].trim().toLowerCase()
+}
+
+const audioExtension = (type) => {
+  const normalized = baseAudioType(type)
+  if (normalized === 'audio/mp4' || normalized === 'audio/aac' || normalized === 'audio/x-m4a' || normalized === 'audio/m4a') return '.m4a'
+  if (normalized === 'audio/ogg') return '.ogg'
+  if (normalized === 'audio/wav') return '.wav'
+  if (normalized === 'audio/mpeg' || normalized === 'audio/mp3') return '.mp3'
+  return '.webm'
 }
 
 const cleanupRecorder = () => {

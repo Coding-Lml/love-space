@@ -299,6 +299,7 @@ public class FileService {
      * 获取文件类型
      */
     public String getFileType(String contentType) {
+        contentType = normalizeContentType(contentType);
         if (IMAGE_TYPES.contains(contentType)) {
             return "image";
         } else if (VIDEO_TYPES.contains(contentType)) {
