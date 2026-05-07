@@ -19,55 +19,65 @@
     </van-nav-bar>
     
     <div class="create-content">
-      <!-- 文字内容 -->
-      <van-field
-        v-model="form.content"
-        type="textarea"
-        placeholder="记录这一刻的美好..."
-        rows="5"
-        maxlength="500"
-        show-word-limit
-        autosize
-      />
-      
-      <!-- 图片/视频上传 -->
-      <div class="upload-section">
-        <van-uploader
-          v-model="fileList"
-          multiple
-          :max-count="9"
-          :max-size="100 * 1024 * 1024"
-          accept="image/*,video/*"
-          :before-read="beforeRead"
-          :after-read="afterRead"
-          @oversize="onOversize"
-        >
-          <div class="upload-trigger">
-            <van-icon name="photo-o" size="24" />
-            <span>添加图片/视频</span>
-          </div>
-        </van-uploader>
-      </div>
+      <section class="compose-hero">
+        <div class="compose-kicker">NEW MOMENT</div>
+        <h1>把这一刻投进你们的信息流</h1>
+        <p>文字、照片、视频和地点会一起成为一条可以被喜欢和回应的动态。</p>
+      </section>
 
-      <div v-if="submitting" class="publish-status" aria-live="polite">
-        <div class="publish-status-row">
-          <span>{{ publishStatus.message }}</span>
-          <span v-if="publishStatus.percent !== null">{{ publishStatus.percent }}%</span>
-        </div>
-        <van-progress
-          v-if="publishStatus.percent !== null"
-          :percentage="publishStatus.percent"
-          stroke-width="6"
-          color="#ff6b81"
-          :show-pivot="false"
+      <section class="compose-card">
+        <!-- 文字内容 -->
+        <van-field
+          v-model="form.content"
+          class="content-field"
+          type="textarea"
+          placeholder="记录这一刻的美好..."
+          rows="5"
+          maxlength="500"
+          show-word-limit
+          autosize
         />
-      </div>
+
+        <!-- 图片/视频上传 -->
+        <div class="upload-section">
+          <div class="section-label">媒体</div>
+          <van-uploader
+            v-model="fileList"
+            multiple
+            :max-count="9"
+            :max-size="100 * 1024 * 1024"
+            accept="image/*,video/*"
+            :before-read="beforeRead"
+            :after-read="afterRead"
+            @oversize="onOversize"
+          >
+            <div class="upload-trigger">
+              <van-icon name="photo-o" size="24" />
+              <span>添加图片/视频</span>
+            </div>
+          </van-uploader>
+        </div>
+
+        <div v-if="submitting" class="publish-status" aria-live="polite">
+          <div class="publish-status-row">
+            <span>{{ publishStatus.message }}</span>
+            <span v-if="publishStatus.percent !== null">{{ publishStatus.percent }}%</span>
+          </div>
+          <van-progress
+            v-if="publishStatus.percent !== null"
+            :percentage="publishStatus.percent"
+            stroke-width="6"
+            color="#ff5a7a"
+            :show-pivot="false"
+          />
+        </div>
+      </section>
       
       <!-- 位置 -->
-      <van-cell-group inset>
-        <van-cell title="公开到广场">
+      <van-cell-group inset class="publish-options">
+        <van-cell title="公开到广场" label="打开后，广场里的访客也能看到这条动态">
           <template #right-icon>
-            <van-switch v-model="form.isPublic" size="22px" />
+            <van-switch v-model="form.isPublic" size="22px" active-color="#10a7a1" />
           </template>
         </van-cell>
         <van-field
@@ -224,11 +234,58 @@ const submit = async () => {
 <style scoped>
 .create-page {
   min-height: 100vh;
-  background: #fff;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 122, 89, 0.18), transparent 30%),
+    linear-gradient(180deg, #fff8f4, #fff 58%, #f7fbfa);
 }
 
 .create-content {
-  padding: 16px;
+  padding: 14px 12px 88px;
+}
+
+.compose-hero {
+  margin-bottom: 12px;
+  padding: 18px;
+  color: #fff;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(40, 35, 47, 0.94), rgba(240, 82, 141, 0.9)),
+    #28232f;
+  box-shadow: var(--shadow-strong);
+}
+
+.compose-kicker {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.7px;
+  opacity: 0.72;
+}
+
+.compose-hero h1 {
+  margin: 8px 0;
+  font-size: 23px;
+  line-height: 1.16;
+  letter-spacing: 0;
+}
+
+.compose-hero p {
+  max-width: 270px;
+  font-size: 13px;
+  line-height: 1.55;
+  opacity: 0.78;
+}
+
+.compose-card {
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow);
+}
+
+.content-field {
+  overflow: hidden;
+  border-radius: 8px;
+  background: #fff8f4;
 }
 
 :deep(.van-field__control) {
@@ -237,14 +294,22 @@ const submit = async () => {
 }
 
 .upload-section {
-  margin: 16px 0;
+  margin: 16px 0 4px;
+}
+
+.section-label {
+  margin: 0 0 8px 2px;
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .publish-status {
   margin: 12px 0 16px;
   padding: 12px;
   border-radius: 8px;
-  background: var(--bg-color);
+  background: linear-gradient(180deg, #fff8f4, #fff);
+  border: 1px solid var(--border-color);
 }
 
 .publish-status-row {
@@ -261,12 +326,14 @@ const submit = async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 80px;
-  height: 80px;
-  background: var(--bg-color);
+  width: 88px;
+  height: 88px;
+  background: linear-gradient(180deg, var(--surface-soft), #fff);
+  border: 1px dashed rgba(255, 90, 122, 0.36);
   border-radius: 8px;
-  color: var(--text-lighter);
+  color: var(--primary-color);
   font-size: 12px;
+  font-weight: 800;
   gap: 4px;
 }
 
@@ -274,8 +341,15 @@ const submit = async () => {
   border-radius: 8px;
 }
 
+.publish-options {
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
 :deep(.van-nav-bar__right) .van-button {
-  background: linear-gradient(135deg, #ff6b81 0%, #e84a5f 100%);
+  background: linear-gradient(135deg, var(--accent-warm) 0%, var(--primary-color) 100%);
   border: none;
   padding: 0 16px;
 }
