@@ -134,6 +134,7 @@ import {
   getCalendarMonthKey,
   getCalendarMonthParams
 } from '../utils/diaryCalendar'
+import { createDiaryListRequestState } from '../utils/diaryListState'
 import {
   formatDiaryDateParts,
   getDiaryMood,
@@ -155,6 +156,7 @@ const selectedDiary = ref(null)
 const diaryDates = ref([])
 const loadedMonths = new Set()
 const loadingMonths = new Set()
+const listRequestState = createDiaryListRequestState()
 const calendarLoading = ref(false)
 
 const minDate = new Date(2026, 0, 1)
@@ -179,7 +181,7 @@ const mergeUniqueById = (existing, incoming) => {
 }
 
 const loadMore = async () => {
-  if (loading.value) return
+  if (!listRequestState.start()) return
   loading.value = true
   loadError.value = false
   try {
@@ -197,6 +199,7 @@ const loadMore = async () => {
     loadError.value = true
     showToast('日记加载失败')
   } finally {
+    listRequestState.finish()
     loading.value = false
   }
 }
