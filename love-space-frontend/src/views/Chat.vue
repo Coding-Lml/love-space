@@ -2,6 +2,15 @@
   <div class="chat-page">
     <van-nav-bar :title="chatTitle" />
 
+    <section class="chat-banner">
+      <img :src="userStore.partner?.avatar || '/default-avatar.png'" class="banner-avatar" loading="lazy" decoding="async" />
+      <div>
+        <div class="banner-kicker">PRIVATE LINE</div>
+        <h1>{{ userStore.partner?.nickname || '另一半' }}</h1>
+        <p>照片、语音、贴纸和想念，都在这里即时抵达。</p>
+      </div>
+    </section>
+
     <div ref="messageScroller" class="message-scroller">
       <div class="load-older" v-if="!historyFinished">
         <van-button size="small" plain round type="primary" :loading="historyLoading" @click="loadOlder">
@@ -56,6 +65,7 @@
 
     <div class="composer safe-area-bottom">
       <div class="tool-row" v-if="showStickerPanel">
+        <div class="tool-row-title">贴纸速递</div>
         <button
           v-for="sticker in stickers"
           :key="sticker.name"
@@ -64,7 +74,13 @@
           @click="sendSticker(sticker)"
         >
           <img :src="sticker.url" :alt="sticker.name" />
+          <span>{{ sticker.name }}</span>
         </button>
+      </div>
+
+      <div v-if="mediaSending" class="composer-status">
+        <van-loading size="14" />
+        <span>媒体正在发送...</span>
       </div>
 
       <div class="input-row">
@@ -501,14 +517,62 @@ onUnmounted(() => {
 .chat-page {
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 247, 248, 0.92)),
-    radial-gradient(circle at 20% 0%, rgba(255, 184, 198, 0.34), transparent 36%),
-    #fff7f8;
-  padding-bottom: 128px;
+    radial-gradient(circle at 20% 0%, rgba(255, 122, 89, 0.18), transparent 30%),
+    radial-gradient(circle at 88% 10%, rgba(16, 167, 161, 0.17), transparent 26%),
+    linear-gradient(180deg, #fff8f4, #fff 48%, #f7fbfa);
+  padding-bottom: 136px;
+}
+
+.chat-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px;
+  padding: 14px;
+  color: #fff;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(40, 35, 47, 0.94), rgba(16, 167, 161, 0.86)),
+    #28232f;
+  box-shadow: var(--shadow);
+}
+
+.chat-banner > div {
+  min-width: 0;
+}
+
+.banner-avatar {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.72);
+}
+
+.banner-kicker {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+  opacity: 0.68;
+}
+
+.chat-banner h1 {
+  margin: 2px 0 4px;
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.chat-banner p {
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0.78;
 }
 
 .message-scroller {
-  height: calc(100vh - 184px);
+  height: calc(100vh - 278px);
+  min-height: 320px;
   overflow-y: auto;
   padding: 14px 12px 20px;
   scroll-behavior: smooth;
@@ -536,7 +600,8 @@ onUnmounted(() => {
   height: 34px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgba(255, 107, 129, 0.35);
+  border: 2px solid #fff;
+  box-shadow: 0 6px 16px rgba(40, 35, 47, 0.1);
   flex: 0 0 auto;
 }
 
@@ -563,16 +628,16 @@ onUnmounted(() => {
 }
 
 .message-bubble {
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 10px 12px;
   background: #fff;
-  box-shadow: 0 4px 18px rgba(255, 107, 129, 0.13);
+  box-shadow: 0 8px 22px rgba(40, 35, 47, 0.08);
   color: var(--text-color);
   overflow: hidden;
 }
 
 .message-row.mine .message-bubble {
-  background: linear-gradient(135deg, #ff6b81 0%, #ff8ea0 100%);
+  background: linear-gradient(135deg, var(--accent-warm) 0%, var(--primary-color) 58%, #f0528d 100%);
   color: #fff;
 }
 
@@ -595,7 +660,7 @@ onUnmounted(() => {
   width: min(58vw, 320px);
   max-height: 360px;
   object-fit: cover;
-  border-radius: 14px;
+  border-radius: 8px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
 }
 
@@ -628,18 +693,29 @@ onUnmounted(() => {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 50px;
+  bottom: 74px;
   z-index: 20;
-  background: rgba(255, 255, 255, 0.96);
-  border-top: 1px solid var(--border-color);
-  box-shadow: 0 -8px 24px rgba(255, 107, 129, 0.12);
+  margin: 0 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 122, 89, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 -8px 28px rgba(40, 35, 47, 0.14);
+  backdrop-filter: blur(18px);
 }
 
 .tool-row {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  padding: 10px 12px 2px;
+  padding: 12px 12px 4px;
+}
+
+.tool-row-title {
+  grid-column: 1 / -1;
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .sticker-option,
@@ -652,15 +728,33 @@ onUnmounted(() => {
 
 .sticker-option {
   aspect-ratio: 1;
-  border-radius: 12px;
-  background: var(--bg-color);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--surface-soft), #fff);
   padding: 6px;
+  font-size: 10px;
+  font-weight: 900;
 }
 
 .sticker-option img {
   width: 100%;
-  height: 100%;
+  height: calc(100% - 16px);
   object-fit: contain;
+}
+
+.sticker-option span {
+  display: block;
+  color: var(--text-light);
+  line-height: 1;
+}
+
+.composer-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 0;
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .input-row {
@@ -674,17 +768,18 @@ onUnmounted(() => {
   width: 34px;
   height: 34px;
   flex: 0 0 34px;
-  border-radius: 50%;
-  background: #fff3f5;
+  border-radius: 8px;
+  background: var(--surface-soft);
   font-size: 19px;
 }
 
 .chat-input {
   flex: 1;
+  min-width: 0;
   padding: 0;
-  border-radius: 18px;
+  border-radius: 8px;
   overflow: hidden;
-  background: #f8f8f8;
+  background: #f7f4f2;
 }
 
 :deep(.chat-input .van-field__body) {
@@ -700,14 +795,21 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   padding: 0 9px;
-  border-radius: 17px;
-  background: #fff3f5;
+  border-radius: 8px;
+  background: var(--surface-mint);
   font-size: 13px;
+  font-weight: 800;
 }
 
 .record-button.recording {
   color: #fff;
-  background: var(--primary-color);
+  background: linear-gradient(135deg, var(--accent-warm), var(--primary-color));
+  animation: recordPulse 1s ease-in-out infinite;
+}
+
+@keyframes recordPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 90, 122, 0.28); }
+  50% { box-shadow: 0 0 0 7px rgba(255, 90, 122, 0); }
 }
 
 .hidden-input {
@@ -722,8 +824,10 @@ onUnmounted(() => {
 
   .composer {
     left: 50%;
+    right: auto;
     transform: translateX(-50%);
     max-width: 760px;
+    width: calc(100% - 20px);
     border-left: 1px solid var(--border-color);
     border-right: 1px solid var(--border-color);
   }

@@ -2,12 +2,24 @@
   <div class="moments-page">
     <van-nav-bar title="我们的动态">
       <template #right>
-        <van-icon name="fire-o" size="20" color="#ff6b81" @click="goSquare" />
+        <van-icon name="fire-o" size="20" color="#ff5a7a" @click="goSquare" />
       </template>
     </van-nav-bar>
     
     <!-- 下拉刷新 -->
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
+      <section class="feed-hero">
+        <div>
+          <div class="feed-kicker">LOVE FEED</div>
+          <h1>把今天变成一条会发光的动态</h1>
+          <p>{{ feedStats }}</p>
+        </div>
+        <button type="button" class="hero-publish" @click="goCreate">
+          <van-icon name="plus" />
+          <span>发布</span>
+        </button>
+      </section>
+
       <van-skeleton
         v-if="loading && pageNum === 1 && !moments.length"
         title
@@ -22,7 +34,14 @@
         finished-text="没有更多了"
         @load="loadMore"
       >
-        <div v-for="moment in moments" :key="moment.id" v-memo="[moment.id, moment.likes, moment.liked, moment.comments?.length]" class="moment-card card">
+        <div
+          v-for="moment in moments"
+          :key="moment.id"
+          v-memo="[moment.id, moment.likes, moment.liked, moment.comments?.length]"
+          class="moment-card card"
+          :style="{ '--moment-accent': getMomentAccent(moment) }"
+        >
+          <div class="moment-accent-line"></div>
           <!-- 用户信息 -->
           <div class="moment-header">
             <img :src="moment.user?.avatar" class="avatar" loading="lazy" decoding="async" />
@@ -30,22 +49,34 @@
               <div class="nickname">{{ moment.user?.nickname }}</div>
               <div class="subline">
                 <div class="time-text">{{ formatTime(moment.createdAt) }}</div>
-                <van-tag v-if="moment.visibility === 'PUBLIC'" type="danger" plain size="medium">公开</van-tag>
+                <span class="visibility-pill" :class="{ public: moment.visibility === 'PUBLIC' }">
+                  {{ visibilityLabel(moment.visibility) }}
+                </span>
               </div>
             </div>
-            <van-icon 
+            <button
               v-if="moment.userId === userStore.user?.id || userStore.isOwner"
-              name="ellipsis" 
-              @click="showActions(moment)" 
-            />
+              type="button"
+              class="more-button"
+              @click="showActions(moment)"
+            >
+              <van-icon name="ellipsis" />
+            </button>
           </div>
           
           <!-- 内容 -->
           <div class="moment-content" v-if="moment.content">
             {{ moment.content }}
           </div>
+          <div v-else-if="describeMomentMedia(moment.mediaList)" class="moment-content moment-content-muted">
+            分享了{{ describeMomentMedia(moment.mediaList) }}
+          </div>
           
           <!-- 媒体文件 -->
+          <div v-if="describeMomentMedia(moment.mediaList)" class="media-caption">
+            <van-icon name="photo-o" />
+            <span>{{ describeMomentMedia(moment.mediaList) }}</span>
+          </div>
           <div 
             v-if="moment.mediaList?.length" 
             class="media-grid"
@@ -79,18 +110,19 @@
           
           <!-- 互动栏 -->
           <div class="moment-actions">
-            <div class="action-item" @click="toggleLike(moment)">
-              <van-icon :name="moment.liked ? 'like' : 'like-o'" :color="moment.liked ? '#ff6b81' : ''" />
+            <button type="button" class="action-item" :class="{ liked: moment.liked }" @click="toggleLike(moment)">
+              <van-icon :name="moment.liked ? 'like' : 'like-o'" />
               <span>{{ moment.likes || '赞' }}</span>
-            </div>
-            <div class="action-item" @click="showCommentInput(moment)">
+            </button>
+            <button type="button" class="action-item" @click="showCommentInput(moment)">
               <van-icon name="comment-o" />
               <span>{{ moment.comments?.length || '评论' }}</span>
-            </div>
+            </button>
           </div>
           
           <!-- 评论列表 -->
           <div class="comments-section" v-if="moment.comments?.length">
+            <div class="comments-title">互动回声</div>
             <div v-for="comment in moment.comments" :key="comment.id" class="comment-item" @click="openCommentActions(moment, comment)">
               <span class="comment-user">
                 {{ comment.user?.nickname }}<template v-if="comment.replyToUser"> 回复 {{ comment.replyToUser?.nickname }}</template>：
@@ -101,7 +133,12 @@
         </div>
         
         <!-- 空状态 -->
-        <van-empty v-if="!loading && !moments.length" description="还没有动态，快来发布吧~" />
+        <div v-if="!loading && !moments.length" class="feed-empty card">
+          <van-icon name="photo-o" />
+          <h2>还没有动态</h2>
+          <p>第一条可以是一张照片、一句想念，或者今天最想保存的小事。</p>
+          <van-button type="primary" round size="small" @click="goCreate">发布第一条</van-button>
+        </div>
       </van-list>
     </van-pull-refresh>
     
@@ -132,16 +169,17 @@
     />
     
     <!-- 评论输入框 -->
-    <van-popup v-model:show="showCommentPopup" position="bottom" round>
+    <van-popup v-model:show="showCommentPopup" position="bottom" round class="comment-popup">
       <div class="comment-input-wrapper">
+        <div class="comment-popup-title">写下你的回应</div>
         <div v-if="replyToComment" class="replying-bar">
           <span class="replying-text">回复 @{{ replyToComment.user?.nickname }}</span>
           <van-icon name="cross" @click="clearReply" />
         </div>
         <div class="input-row">
-          <div class="emoji-toggle" @click="toggleEmoji">
+          <button type="button" class="emoji-toggle" @click="toggleEmoji">
             <span>😊</span>
-          </div>
+          </button>
           <van-field
             v-model="commentText"
             :placeholder="replyToComment ? `回复 @${replyToComment.user?.nickname}` : '写评论...'"
@@ -177,13 +215,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { useUserStore } from '../stores/user'
 import api from '../api'
 import dayjs from 'dayjs'
 import { toThumbUrl, toPreviewUrl, normalizeMediaUrl } from '../utils/media'
+import { describeMomentMedia, getMomentAccent, visibilityLabel } from '../utils/feedPresentation'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -193,6 +232,13 @@ const loading = ref(false)
 const finished = ref(false)
 const refreshing = ref(false)
 const pageNum = ref(1)
+
+const feedStats = computed(() => {
+  if (!moments.value.length) return '动态、照片、评论，都会在这里汇成你们的日常现场'
+  const mediaCount = moments.value.filter(moment => moment.mediaList?.length).length
+  const commentCount = moments.value.reduce((sum, moment) => sum + (moment.comments?.length || 0), 0)
+  return `${moments.value.length} 条近况 · ${mediaCount} 条带照片/视频 · ${commentCount} 条回应`
+})
 
 const showActionSheet = ref(false)
 const currentMoment = ref(null)
@@ -287,7 +333,8 @@ const toggleLike = async (moment) => {
     const res = await api.moments.like(moment.id)
     if (res.code === 200) {
       moment.liked = res.data
-      moment.likes = moment.liked ? (moment.likes || 0) + 1 : moment.likes - 1
+      moment.likes = moment.liked ? (moment.likes || 0) + 1 : Math.max(0, (moment.likes || 0) - 1)
+      if (moment.liked) showToast('收到一颗喜欢')
     }
   } catch (e) {
     console.error('点赞失败', e)
@@ -334,9 +381,11 @@ const submitComment = async () => {
   try {
     const res = await api.moments.addComment(currentMoment.value.id, commentText.value, replyToComment.value?.id)
     if (res.code === 200) {
+      if (!currentMoment.value.comments) currentMoment.value.comments = []
       currentMoment.value.comments.push(res.data)
       showCommentPopup.value = false
       replyToComment.value = null
+      showEmoji.value = false
       showToast('评论成功')
     }
   } catch (e) {
@@ -452,18 +501,90 @@ const goSquare = () => router.push({ name: 'square' })
 <style scoped>
 .moments-page {
   min-height: 100vh;
-  padding-bottom: 70px;
+  padding-bottom: 84px;
+  background:
+    radial-gradient(circle at 14% 3%, rgba(255, 122, 89, 0.18), transparent 28%),
+    radial-gradient(circle at 86% 0%, rgba(16, 167, 161, 0.18), transparent 30%),
+    linear-gradient(180deg, #fff8f4 0%, #fff 48%, #f7fbfa 100%);
+}
+
+.feed-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 14px 12px 6px;
+  padding: 18px;
+  color: #fff;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 122, 89, 0.96), rgba(240, 82, 141, 0.96) 48%, rgba(16, 167, 161, 0.9)),
+    #ff5a7a;
+  box-shadow: var(--shadow-strong);
+}
+
+.feed-hero > div {
+  min-width: 0;
+}
+
+.feed-kicker {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.8px;
+  opacity: 0.8;
+}
+
+.feed-hero h1 {
+  max-width: 220px;
+  margin: 7px 0;
+  font-size: 23px;
+  line-height: 1.14;
+  letter-spacing: 0;
+}
+
+.feed-hero p {
+  max-width: 230px;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.86;
+}
+
+.hero-publish {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 12px;
+  color: var(--primary-color);
+  font-weight: 800;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(40, 35, 47, 0.16);
 }
 
 .moment-card {
+  position: relative;
+  overflow: hidden;
   margin-bottom: 12px;
+  padding-top: 18px;
 }
 
 .feed-skeleton {
   margin: 12px;
   padding: 16px;
-  border-radius: 16px;
+  border-radius: 8px;
   background: #fff;
+}
+
+.moment-accent-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, var(--moment-accent), rgba(255, 255, 255, 0));
 }
 
 .moment-header {
@@ -485,49 +606,122 @@ const goSquare = () => router.push({ name: 'square' })
 
 .nickname {
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 800;
   color: var(--text-color);
 }
 
+.visibility-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--accent-cool);
+  background: var(--surface-mint);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.visibility-pill.public {
+  color: var(--primary-color);
+  background: #fff0f3;
+}
+
+.more-button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-light);
+  background: #f7f4f2;
+}
+
 .moment-content {
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.6;
   color: var(--text-color);
   margin-bottom: 12px;
   white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.moment-content-muted {
+  color: var(--text-light);
 }
 
 .moment-location {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
+  max-width: 100%;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #f7f4f2;
   font-size: 12px;
-  color: var(--text-lighter);
+  color: var(--text-light);
   margin: 8px 0;
+}
+
+.media-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 8px;
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .moment-actions {
   display: flex;
-  gap: 24px;
+  gap: 10px;
   padding-top: 12px;
   border-top: 1px solid var(--border-color);
   margin-top: 12px;
 }
 
 .action-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 6px;
+  min-width: 82px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #f7f4f2;
   font-size: 13px;
+  font-weight: 800;
   color: var(--text-light);
   cursor: pointer;
+}
+
+.action-item.liked {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-warm), var(--primary-color));
+  animation: likePop 0.28s ease-out;
+}
+
+@keyframes likePop {
+  0% { transform: scale(0.94); }
+  70% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 .comments-section {
   margin-top: 12px;
   padding: 12px;
-  background: var(--bg-color);
+  background: linear-gradient(180deg, #fff8f4, #fff);
+  border: 1px solid rgba(255, 122, 89, 0.12);
   border-radius: 8px;
+}
+
+.comments-title {
+  margin-bottom: 5px;
+  color: var(--text-lighter);
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .comment-item {
@@ -547,21 +741,55 @@ const goSquare = () => router.push({ name: 'square' })
 .publish-btn {
   position: fixed;
   right: 20px;
-  bottom: 80px;
+  bottom: 86px;
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #ff6b81 0%, #e84a5f 100%);
+  background: linear-gradient(135deg, var(--accent-warm) 0%, var(--primary-color) 54%, #f0528d 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-size: 28px;
-  box-shadow: 0 4px 12px rgba(255, 107, 129, 0.4);
+  box-shadow: var(--shadow-strong);
+  z-index: 10;
+}
+
+.feed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 34px 20px;
+  text-align: center;
+}
+
+.feed-empty .van-icon {
+  color: var(--primary-color);
+  font-size: 34px;
+}
+
+.feed-empty h2 {
+  font-size: 18px;
+  color: var(--text-color);
+}
+
+.feed-empty p {
+  color: var(--text-light);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .comment-input-wrapper {
-  padding: 12px;
+  padding: 14px 12px 18px;
+  background: linear-gradient(180deg, #fff, #fff8f4);
+}
+
+.comment-popup-title {
+  margin-bottom: 10px;
+  color: var(--text-color);
+  font-size: 15px;
+  font-weight: 900;
 }
 
 :deep(.van-field__button) {
@@ -590,7 +818,12 @@ const goSquare = () => router.push({ name: 'square' })
 }
 
 .emoji-toggle {
-  padding: 0 8px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-soft);
   font-size: 24px;
   display: flex;
   align-items: center;
@@ -599,6 +832,9 @@ const goSquare = () => router.push({ name: 'square' })
 
 .comment-field {
   flex: 1;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .emoji-panel {
@@ -606,12 +842,19 @@ const goSquare = () => router.push({ name: 'square' })
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  border-top: 1px solid #f5f5f5;
+  border-top: 1px solid rgba(255, 122, 89, 0.12);
   margin-top: 4px;
 }
 
 .emoji-item {
   font-size: 22px;
   padding: 4px;
+}
+
+@media (min-width: 768px) {
+  .moments-page {
+    max-width: 760px;
+    margin: 0 auto;
+  }
 }
 </style>

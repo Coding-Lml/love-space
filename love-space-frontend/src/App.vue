@@ -9,8 +9,8 @@
     <van-tabbar
       v-if="showTabbar"
       v-model="activeTab"
-      active-color="#ff6b81"
-      inactive-color="#999"
+      active-color="#ff5a7a"
+      inactive-color="#9a909e"
       @change="onTabChange"
     >
       <template v-if="userStore.isOwner">
@@ -114,7 +114,32 @@ onUnmounted(() => {
 <style scoped>
 .app-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #fff5f5 0%, #ffeef0 100%);
+  background:
+    radial-gradient(circle at 12% 4%, rgba(255, 122, 89, 0.18), transparent 28%),
+    radial-gradient(circle at 90% 0%, rgba(16, 167, 161, 0.16), transparent 30%),
+    linear-gradient(180deg, #fff8f4 0%, #fff 48%, #f7fbfa 100%);
   padding-bottom: 50px;
+}
+
+:deep(.van-tabbar) {
+  left: 10px;
+  right: 10px;
+  bottom: 8px;
+  width: auto;
+  height: 58px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 122, 89, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 34px rgba(40, 35, 47, 0.14);
+  backdrop-filter: blur(18px);
+}
+
+:deep(.van-tabbar-item) {
+  font-weight: 700;
+}
+
+:deep(.van-tabbar-item--active) {
+  background: linear-gradient(180deg, rgba(255, 241, 234, 0.86), rgba(255, 255, 255, 0));
 }
 </style>
