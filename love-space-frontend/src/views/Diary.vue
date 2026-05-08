@@ -15,6 +15,7 @@
         :min-date="minDate"
         :max-date="maxDate"
         :formatter="formatter"
+        @month-show="onMonthShow"
         @select="onDateSelect"
       />
       
@@ -77,10 +78,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import dayjs from 'dayjs'
+import {
+  collectDiaryDates,
+  getCalendarMonthKey,
+  getCalendarMonthParams
+} from '../utils/diaryCalendar'
 
 const router = useRouter()
 
@@ -94,6 +100,8 @@ const pageNum = ref(1)
 const selectedDate = ref('')
 const selectedDiary = ref(null)
 const diaryDates = ref([])
+const loadedMonths = new Set()
+const loadingMonths = new Set()
 
 const minDate = new Date(2026, 0, 1)
 const maxDate = new Date()
@@ -145,21 +153,35 @@ const onRefresh = async () => {
 const toggleView = () => {
   viewMode.value = viewMode.value === 'calendar' ? 'list' : 'calendar'
   if (viewMode.value === 'calendar') {
-    loadMonthDiaries()
+    loadMonthDiaries(new Date())
   }
 }
 
 // 加载当月日记
-const loadMonthDiaries = async () => {
-  const now = dayjs()
+const loadMonthDiaries = async (source = new Date()) => {
+  const monthKey = getCalendarMonthKey(source)
+  if (loadedMonths.has(monthKey) || loadingMonths.has(monthKey)) {
+    return
+  }
+
+  const { year, month } = getCalendarMonthParams(source)
+  loadingMonths.add(monthKey)
+
   try {
-    const res = await api.diary.getByMonth(now.year(), now.month() + 1)
+    const res = await api.diary.getByMonth(year, month)
     if (res.code === 200) {
-      diaryDates.value = res.data.map(d => d.diaryDate)
+      diaryDates.value = collectDiaryDates(diaryDates.value, res.data)
+      loadedMonths.add(monthKey)
     }
   } catch (e) {
     console.error('加载月度日记失败', e)
+  } finally {
+    loadingMonths.delete(monthKey)
   }
+}
+
+const onMonthShow = (month) => {
+  loadMonthDiaries(month)
 }
 
 // 日历格式化
