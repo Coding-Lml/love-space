@@ -64,19 +64,15 @@
     </div>
 
     <div class="composer safe-area-bottom">
-      <div class="tool-row" v-if="showStickerPanel">
-        <div class="tool-row-title">贴纸速递</div>
-        <button
-          v-for="sticker in stickers"
-          :key="sticker.name"
-          type="button"
-          class="sticker-option"
-          @click="sendSticker(sticker)"
-        >
-          <img :src="sticker.url" :alt="sticker.name" />
-          <span>{{ sticker.name }}</span>
-        </button>
-      </div>
+      <EmojiPanel
+        v-if="showEmojiPanel"
+        class="chat-emoji-panel"
+        :stickers="stickers"
+        quick-send
+        @select-emoji="insertEmoji"
+        @quick-send-emoji="quickSendEmoji"
+        @select-sticker="sendSticker"
+      />
 
       <div v-if="mediaSending" class="composer-status">
         <van-loading size="14" />
@@ -84,7 +80,7 @@
       </div>
 
       <div class="input-row">
-        <button type="button" class="icon-button" @click="toggleStickerPanel">
+        <button type="button" class="icon-button" @click="toggleEmojiPanel">
           <van-icon name="smile-o" />
         </button>
         <button type="button" class="icon-button" @click="pickImage">
@@ -137,6 +133,8 @@ import api from '../api'
 import { useUserStore } from '../stores/user'
 import { addChatSocketListener } from '../utils/chatSocket'
 import { normalizeMediaUrl, toPreviewUrl, toThumbUrl } from '../utils/media'
+import EmojiPanel from '../components/EmojiPanel.vue'
+import { appendToken } from '../utils/emojiCatalog'
 import stickerLove from '../assets/stickers/love.svg'
 import stickerMissU from '../assets/stickers/miss-u.svg'
 import stickerHug from '../assets/stickers/hug.svg'
@@ -154,7 +152,7 @@ const messages = ref([])
 const draft = ref('')
 const sending = ref(false)
 const mediaSending = ref(false)
-const showStickerPanel = ref(false)
+const showEmojiPanel = ref(false)
 const imageInput = ref(null)
 const audioInput = ref(null)
 const messageScroller = ref(null)
@@ -298,13 +296,37 @@ const sendSticker = async (sticker) => {
   try {
     const res = await api.chat.sendMessage({ type: 'sticker', mediaUrl: sticker.url })
     if (res.code === 200) {
-      showStickerPanel.value = false
+      showEmojiPanel.value = false
       mergeMessage(res.data)
       await nextTick()
       scrollToBottom()
     }
   } catch (e) {
     showToast('表情包发送失败')
+  } finally {
+    sending.value = false
+  }
+}
+
+const insertEmoji = emoji => {
+  draft.value = appendToken(draft.value, emoji)
+}
+
+const quickSendEmoji = async (emoji) => {
+  const content = emoji?.value
+  if (!content || sending.value) return
+  sending.value = true
+  try {
+    const res = await api.chat.sendMessage({ type: 'text', content })
+    if (res.code === 200) {
+      mergeMessage(res.data)
+      await nextTick()
+      scrollToBottom()
+    } else {
+      showToast(res.message || '发送失败')
+    }
+  } catch (e) {
+    showToast('发送失败')
   } finally {
     sending.value = false
   }
@@ -339,8 +361,8 @@ const onImageSelected = async (event) => {
   }
 }
 
-const toggleStickerPanel = () => {
-  showStickerPanel.value = !showStickerPanel.value
+const toggleEmojiPanel = () => {
+  showEmojiPanel.value = !showEmojiPanel.value
 }
 
 const toggleRecording = async () => {
@@ -704,21 +726,6 @@ onUnmounted(() => {
   backdrop-filter: blur(18px);
 }
 
-.tool-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  padding: 12px 12px 4px;
-}
-
-.tool-row-title {
-  grid-column: 1 / -1;
-  color: var(--text-light);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.sticker-option,
 .icon-button,
 .record-button {
   border: 0;
@@ -726,25 +733,9 @@ onUnmounted(() => {
   color: var(--primary-color);
 }
 
-.sticker-option {
-  aspect-ratio: 1;
-  border-radius: 8px;
-  background: linear-gradient(180deg, var(--surface-soft), #fff);
-  padding: 6px;
-  font-size: 10px;
-  font-weight: 900;
-}
-
-.sticker-option img {
-  width: 100%;
-  height: calc(100% - 16px);
-  object-fit: contain;
-}
-
-.sticker-option span {
-  display: block;
-  color: var(--text-light);
-  line-height: 1;
+.chat-emoji-panel {
+  max-height: min(56vh, 380px);
+  overflow-y: auto;
 }
 
 .composer-status {

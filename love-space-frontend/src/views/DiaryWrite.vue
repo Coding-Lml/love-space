@@ -51,6 +51,12 @@
       
       <!-- 内容 -->
       <div class="content-section card">
+        <div class="content-tools">
+          <button type="button" class="emoji-trigger" @click="showEmojiPanel = !showEmojiPanel">
+            <van-icon name="smile-o" />
+            <span>表情</span>
+          </button>
+        </div>
         <van-field
           v-model="form.content"
           type="textarea"
@@ -59,6 +65,11 @@
           maxlength="2000"
           show-word-limit
           autosize
+        />
+        <EmojiPanel
+          v-if="showEmojiPanel"
+          class="diary-emoji-panel"
+          @select-emoji="insertEmoji"
         />
       </div>
       
@@ -97,6 +108,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { showToast } from 'vant'
 import api from '../api'
 import dayjs from 'dayjs'
+import EmojiPanel from '../components/EmojiPanel.vue'
+import { appendToken } from '../utils/emojiCatalog'
 
 const router = useRouter()
 const route = useRoute()
@@ -112,6 +125,7 @@ const form = ref({
 const isPrivate = ref(false)
 const submitting = ref(false)
 const showDatePicker = ref(false)
+const showEmojiPanel = ref(false)
 const datePickerValue = ref([
   dayjs().format('YYYY'),
   dayjs().format('MM'),
@@ -133,6 +147,10 @@ const moodConfig = {
 const onDateConfirm = ({ selectedValues }) => {
   form.value.diaryDate = selectedValues.join('-')
   showDatePicker.value = false
+}
+
+const insertEmoji = emoji => {
+  form.value.content = appendToken(form.value.content, emoji)
 }
 
 // 提交
@@ -230,10 +248,36 @@ onMounted(() => {
 
 .content-section {
   margin: 12px 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.content-tools {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 10px 0;
+}
+
+.emoji-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--primary-color);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.diary-emoji-panel {
+  margin-top: 4px;
 }
 
 .content-section :deep(.van-field) {
-  padding: 0;
+  padding: 8px 10px 10px;
 }
 
 .visibility-text {

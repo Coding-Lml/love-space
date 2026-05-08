@@ -37,6 +37,17 @@
           show-word-limit
           autosize
         />
+        <div class="compose-tools">
+          <button type="button" class="emoji-trigger" @click="showEmojiPanel = !showEmojiPanel">
+            <van-icon name="smile-o" />
+            <span>表情</span>
+          </button>
+        </div>
+        <EmojiPanel
+          v-if="showEmojiPanel"
+          class="moment-emoji-panel"
+          @select-emoji="insertEmoji"
+        />
 
         <!-- 图片/视频上传 -->
         <div class="upload-section">
@@ -97,6 +108,8 @@ import { useRouter } from 'vue-router'
 import { showToast, showLoadingToast, closeToast } from 'vant'
 import api from '../api'
 import { prepareUploadFiles } from '../utils/upload'
+import EmojiPanel from '../components/EmojiPanel.vue'
+import { appendToken } from '../utils/emojiCatalog'
 
 const router = useRouter()
 
@@ -107,6 +120,7 @@ const form = ref({
 })
 const fileList = ref([])
 const submitting = ref(false)
+const showEmojiPanel = ref(false)
 const publishStatus = ref({
   phase: 'idle',
   percent: null,
@@ -115,6 +129,10 @@ const publishStatus = ref({
 
 const setPublishStatus = (phase, message, percent = null) => {
   publishStatus.value = { phase, message, percent }
+}
+
+const insertEmoji = emoji => {
+  form.value.content = appendToken(form.value.content, emoji)
 }
 
 const beforeRead = (file) => {
@@ -286,6 +304,32 @@ const submit = async () => {
   overflow: hidden;
   border-radius: 8px;
   background: #fff8f4;
+}
+
+.compose-tools {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 2px 0;
+}
+
+.emoji-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--primary-color);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.moment-emoji-panel {
+  margin: 8px -2px 0;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 :deep(.van-field__control) {
